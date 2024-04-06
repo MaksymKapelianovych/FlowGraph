@@ -11,6 +11,7 @@
 #include "Graph/Nodes/FlowGraphNode.h"
 
 #include "FlowAsset.h"
+#include "FlowSettings.h"
 #include "Nodes/FlowNode.h"
 #include "Nodes/FlowNodeBlueprint.h"
 #include "Nodes/Route/FlowNode_CustomInput.h"
@@ -32,12 +33,20 @@ TMap<FName, FAssetData> UFlowGraphSchema::BlueprintFlowNodes;
 TMap<UClass*, UClass*> UFlowGraphSchema::GraphNodesByFlowNodes;
 
 bool UFlowGraphSchema::bBlueprintCompilationPending;
+int32 UFlowGraphSchema::CurrentCacheRefreshID = 0;
 
 FFlowGraphSchemaRefresh UFlowGraphSchema::OnNodeListChanged;
 
 UFlowGraphSchema::UFlowGraphSchema(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
+	if (HasAnyFlags(RF_ClassDefaultObject))
+	{
+		GetMutableDefault<UFlowSettings>()->OnAdaptiveNodeTitlesChanged.BindLambda([]()
+		{
+			GetDefault<UFlowGraphSchema>()->ForceVisualizationCacheClear();
+		});
+	}
 }
 
 void UFlowGraphSchema::SubscribeToAssetChanges()
@@ -46,6 +55,7 @@ void UFlowGraphSchema::SubscribeToAssetChanges()
 	AssetRegistry.Get().OnFilesLoaded().AddStatic(&UFlowGraphSchema::GatherNodes);
 	AssetRegistry.Get().OnAssetAdded().AddStatic(&UFlowGraphSchema::OnAssetAdded);
 	AssetRegistry.Get().OnAssetRemoved().AddStatic(&UFlowGraphSchema::OnAssetRemoved);
+	AssetRegistry.Get().OnAssetRenamed().AddStatic(&UFlowGraphSchema::OnAssetRenamed);
 
 	FCoreUObjectDelegates::ReloadCompleteDelegate.AddStatic(&UFlowGraphSchema::OnHotReload);
 
@@ -255,6 +265,46 @@ void UFlowGraphSchema::OnPinConnectionDoubleCicked(UEdGraphPin* PinA, UEdGraphPi
 	PinA->BreakLinkTo(PinB);
 	PinA->MakeLinkTo((PinA->Direction == EGPD_Output) ? NewReroute->InputPins[0] : NewReroute->OutputPins[0]);
 	PinB->MakeLinkTo((PinB->Direction == EGPD_Output) ? NewReroute->InputPins[0] : NewReroute->OutputPins[0]);
+}
+
+bool UFlowGraphSchema::IsCacheVisualizationOutOfDate(int32 InVisualizationCacheID) const
+{
+	return CurrentCacheRefreshID != InVisualizationCacheID;
+}
+
+int32 UFlowGraphSchema::GetCurrentVisualizationCacheID() const
+{
+	return CurrentCacheRefreshID;
+}
+
+void UFlowGraphSchema::ForceVisualizationCacheClear() const
+{
+	++CurrentCacheRefreshID;
+}
+
+void UFlowGraphSchema::UpdateGeneratedDisplayName()
+{
+	static const FName NAME_GeneratedDisplayName("GeneratedDisplayName");
+
+	for (UClass* FlowNodeClass : NativeFlowNodes)
+	{
+		FString NameWithoutPrefix = FFlowGraphUtils::RemovePrefixFromNodeText(FlowNodeClass->GetDisplayNameText());
+		FlowNodeClass->SetMetaData(NAME_GeneratedDisplayName, *NameWithoutPrefix);
+	}
+
+	for (TPair<FName, FAssetData>& AssetData : BlueprintFlowNodes)
+	{
+		if (UBlueprint* Blueprint = GetPlaceableNodeBlueprint(AssetData.Value))
+		{
+			FString NameWithoutPrefix = FFlowGraphUtils::RemovePrefixFromNodeText(Blueprint->GeneratedClass->GetDisplayNameText());
+			Blueprint->GeneratedClass->SetMetaData(NAME_GeneratedDisplayName, *NameWithoutPrefix);
+		}
+	}
+	
+	OnNodeListChanged.Broadcast();
+
+	// Refresh node titles
+	GetDefault<UFlowGraphSchema>()->ForceVisualizationCacheClear();
 }
 
 TArray<TSharedPtr<FString>> UFlowGraphSchema::GetFlowNodeCategories()
@@ -520,7 +570,7 @@ void UFlowGraphSchema::GatherNodes()
 		AddAsset(AssetData, true);
 	}
 
-	OnNodeListChanged.Broadcast();
+	UpdateGeneratedDisplayName();
 }
 
 void UFlowGraphSchema::OnAssetAdded(const FAssetData& AssetData)
@@ -544,7 +594,7 @@ void UFlowGraphSchema::AddAsset(const FAssetData& AssetData, const bool bBatch)
 
 			if (!bBatch)
 			{
-				OnNodeListChanged.Broadcast();
+				UpdateGeneratedDisplayName();
 			}
 		}
 	}
@@ -557,8 +607,24 @@ void UFlowGraphSchema::OnAssetRemoved(const FAssetData& AssetData)
 		BlueprintFlowNodes.Remove(AssetData.PackageName);
 		BlueprintFlowNodes.Shrink();
 
-		OnNodeListChanged.Broadcast();
+		UpdateGeneratedDisplayName();
 	}
+}
+
+void UFlowGraphSchema::OnAssetRenamed(const FAssetData& AssetData, const FString& OldObjectPath)
+{
+	FString OldPackageName;
+	FString OldAssetName;
+	if (OldObjectPath.Split(TEXT("."), &OldPackageName, &OldAssetName))
+	{
+		const FName NAME_OldPackageName{OldPackageName};
+		if (BlueprintFlowNodes.Contains(NAME_OldPackageName))
+		{
+			BlueprintFlowNodes.Remove(NAME_OldPackageName);
+		}
+	}
+
+	AddAsset(AssetData, false);
 }
 
 UBlueprint* UFlowGraphSchema::GetPlaceableNodeBlueprint(const FAssetData& AssetData)

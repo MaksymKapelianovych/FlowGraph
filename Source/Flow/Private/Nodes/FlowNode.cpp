@@ -38,6 +38,7 @@ UFlowNode::UFlowNode(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 	, GraphNode(nullptr)
 #if WITH_EDITOR
+	, bDisplayNodeTitleWithoutPrefix(true)
 	, bCanDelete(true)
 	, bCanDuplicate(true)
 	, bNodeDeprecated(false)
@@ -117,6 +118,12 @@ FText UFlowNode::GetNodeTitle() const
 		}
 	}
 
+	static const FName NAME_DisplayName(TEXT("DisplayName"));
+	if (bDisplayNodeTitleWithoutPrefix && !GetClass()->HasMetaData(NAME_DisplayName))
+	{
+		return GetGeneratedDisplayName();
+	}
+	
 	return GetClass()->GetDisplayNameText();
 }
 
@@ -131,7 +138,36 @@ FText UFlowNode::GetNodeToolTip() const
 		}
 	}
 
+	static const FName NAME_Tooltip(TEXT("Tooltip"));
+	if (bDisplayNodeTitleWithoutPrefix && !GetClass()->HasMetaData(NAME_Tooltip))
+	{
+		return GetGeneratedDisplayName();
+	}
+
+	// GetClass()->GetToolTipText() can return meta = (DisplayName = ... ), but ignore BlueprintDisplayName even if it is BP Node
+	if (GetClass()->ClassGeneratedBy)
+	{
+		const FString& BlueprintTitle = Cast<UBlueprint>(GetClass()->ClassGeneratedBy)->BlueprintDisplayName;
+		if (!BlueprintTitle.IsEmpty())
+		{
+			return FText::FromString(BlueprintTitle);
+		}
+	}
+	
 	return GetClass()->GetToolTipText();
+}
+
+FText UFlowNode::GetGeneratedDisplayName() const
+{
+	static const FName NAME_GeneratedDisplayName(TEXT("GeneratedDisplayName"));
+	
+	if (GetClass()->ClassGeneratedBy)
+	{
+		UClass* Class = Cast<UBlueprint>(GetClass()->ClassGeneratedBy)->GeneratedClass;
+		return Class->GetMetaDataText(NAME_GeneratedDisplayName);
+	}
+	
+	return GetClass()->GetMetaDataText(NAME_GeneratedDisplayName);
 }
 
 bool UFlowNode::GetDynamicTitleColor(FLinearColor& OutColor) const
