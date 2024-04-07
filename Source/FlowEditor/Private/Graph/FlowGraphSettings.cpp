@@ -94,7 +94,7 @@ void UFlowGraphSettings::PostEditChangeProperty(FPropertyChangedEvent& PropertyC
 		}
 		else
 		{
-			UFlowGraphSchema::UpdateGeneratedDisplayName();
+			UFlowGraphSchema::UpdateGeneratedDisplayNames();
 		}
 	}
 }

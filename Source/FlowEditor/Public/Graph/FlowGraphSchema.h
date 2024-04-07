@@ -49,7 +49,8 @@ public:
 	virtual void ForceVisualizationCacheClear() const override;
 	// --
 
-	static void UpdateGeneratedDisplayName();
+	static void UpdateGeneratedDisplayNames();
+	static void UpdateGeneratedDisplayName(UClass* NodeClass, bool bBatch = false);
 
 	static TArray<TSharedPtr<FString>> GetFlowNodeCategories();
 	static UClass* GetAssignedGraphNodeClass(const UClass* FlowNodeClass);

@@ -282,22 +282,19 @@ void UFlowGraphSchema::ForceVisualizationCacheClear() const
 	++CurrentCacheRefreshID;
 }
 
-void UFlowGraphSchema::UpdateGeneratedDisplayName()
+void UFlowGraphSchema::UpdateGeneratedDisplayNames()
 {
-	static const FName NAME_GeneratedDisplayName("GeneratedDisplayName");
-
 	for (UClass* FlowNodeClass : NativeFlowNodes)
 	{
-		FString NameWithoutPrefix = FFlowGraphUtils::RemovePrefixFromNodeText(FlowNodeClass->GetDisplayNameText());
-		FlowNodeClass->SetMetaData(NAME_GeneratedDisplayName, *NameWithoutPrefix);
+		UpdateGeneratedDisplayName(FlowNodeClass, true);
 	}
 
 	for (TPair<FName, FAssetData>& AssetData : BlueprintFlowNodes)
 	{
-		if (UBlueprint* Blueprint = GetPlaceableNodeBlueprint(AssetData.Value))
+		if (UBlueprint* Blueprint = Cast<UBlueprint>(AssetData.Value.GetAsset()))
 		{
-			FString NameWithoutPrefix = FFlowGraphUtils::RemovePrefixFromNodeText(Blueprint->GeneratedClass->GetDisplayNameText());
-			Blueprint->GeneratedClass->SetMetaData(NAME_GeneratedDisplayName, *NameWithoutPrefix);
+			UClass* NodeClass = Blueprint->GeneratedClass;
+			UpdateGeneratedDisplayName(NodeClass, true);
 		}
 	}
 	
@@ -305,6 +302,27 @@ void UFlowGraphSchema::UpdateGeneratedDisplayName()
 
 	// Refresh node titles
 	GetDefault<UFlowGraphSchema>()->ForceVisualizationCacheClear();
+}
+
+void UFlowGraphSchema::UpdateGeneratedDisplayName(UClass* NodeClass, bool bBatch)
+{
+	static const FName NAME_GeneratedDisplayName("GeneratedDisplayName");
+
+	if (NodeClass->IsChildOf(UFlowNode::StaticClass()) == false)
+	{
+		return;
+	}
+
+	FString NameWithoutPrefix = FFlowGraphUtils::RemovePrefixFromNodeText(NodeClass->GetDisplayNameText());
+	NodeClass->SetMetaData(NAME_GeneratedDisplayName, *NameWithoutPrefix);
+	
+	if (!bBatch)
+	{
+		OnNodeListChanged.Broadcast();
+
+		// Refresh node titles
+		GetDefault<UFlowGraphSchema>()->ForceVisualizationCacheClear();
+	}
 }
 
 TArray<TSharedPtr<FString>> UFlowGraphSchema::GetFlowNodeCategories()
@@ -570,7 +588,7 @@ void UFlowGraphSchema::GatherNodes()
 		AddAsset(AssetData, true);
 	}
 
-	UpdateGeneratedDisplayName();
+	UpdateGeneratedDisplayNames();
 }
 
 void UFlowGraphSchema::OnAssetAdded(const FAssetData& AssetData)
@@ -594,7 +612,11 @@ void UFlowGraphSchema::AddAsset(const FAssetData& AssetData, const bool bBatch)
 
 			if (!bBatch)
 			{
-				UpdateGeneratedDisplayName();
+				if (UBlueprint* Blueprint = Cast<UBlueprint>(AssetData.GetAsset()))
+				{
+					UClass* NodeClass = Blueprint->GeneratedClass;
+					UpdateGeneratedDisplayName(NodeClass, false);
+				}
 			}
 		}
 	}
@@ -607,7 +629,8 @@ void UFlowGraphSchema::OnAssetRemoved(const FAssetData& AssetData)
 		BlueprintFlowNodes.Remove(AssetData.PackageName);
 		BlueprintFlowNodes.Shrink();
 
-		UpdateGeneratedDisplayName();
+		// Only broadcast OnNodeListChanged, do not generate node name, because it is already deleted and cannot be shown in graph
+		OnNodeListChanged.Broadcast();
 	}
 }
 
