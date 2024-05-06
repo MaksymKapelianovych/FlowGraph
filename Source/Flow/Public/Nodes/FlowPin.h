@@ -221,6 +221,7 @@ protected:
 	UPROPERTY()
 	uint8 bTraitAllowed : 1;
 
+	UPROPERTY()
 	uint8 bEnabled : 1;
 	uint8 bHit : 1;
 
