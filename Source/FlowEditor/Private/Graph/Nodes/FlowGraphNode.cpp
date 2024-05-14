@@ -262,6 +262,9 @@ void UFlowGraphNode::ReconstructNode()
 		DestroyPin(OldPin);
 	}
 
+	// remove expired data from deleted nodes and pins
+	UFlowDebuggerSubsystem::CleanupTraits(this);
+
 	bNeedsFullReconstruction = false;
 }
 
@@ -359,16 +362,6 @@ void UFlowGraphNode::ReconstructSinglePin(UEdGraphPin* NewPin, UEdGraphPin* OldP
 
 	// Copy over modified persistent data
 	NewPin->MovePersistentDataFromOldPin(*OldPin);
-
-	// Update the in breakpoints as the old pin will be going the way of the dodo
-	for (TPair<FEdGraphPinReference, FFlowPinTrait>& PinBreakpoint : PinBreakpoints)
-	{
-		if (PinBreakpoint.Key.Get() == OldPin)
-		{
-			PinBreakpoint.Key = NewPin;
-			break;
-		}
-	}
 }
 
 void UFlowGraphNode::GetNodeContextMenuActions(class UToolMenu* Menu, class UGraphNodeContextMenuContext* Context) const
@@ -739,7 +732,7 @@ void UFlowGraphNode::RemoveOrphanedPin(UEdGraphPin* Pin)
 	const FScopedTransaction Transaction(LOCTEXT("RemoveOrphanedPin", "Remove Orphaned Pin"));
 	Modify();
 
-	PinBreakpoints.Remove(Pin);
+	UFlowDebuggerSubsystem::ClearPinTraits(Pin);
 
 	Pin->MarkAsGarbage();
 	Pins.Remove(Pin);
@@ -825,7 +818,7 @@ void UFlowGraphNode::RemoveInstancePin(UEdGraphPin* Pin)
 	const FScopedTransaction Transaction(LOCTEXT("RemoveInstancePin", "Remove Instance Pin"));
 	Modify();
 
-	PinBreakpoints.Remove(Pin);
+	UFlowDebuggerSubsystem::ClearPinTraits(Pin);
 
 	if (Pin->Direction == EGPD_Input)
 	{
@@ -927,10 +920,13 @@ void UFlowGraphNode::GetPinHoverText(const UEdGraphPin& Pin, FString& HoverTextO
 
 void UFlowGraphNode::OnInputTriggered(const int32 Index)
 {
-	if (InputPins.IsValidIndex(Index) && PinBreakpoints.Contains(InputPins[Index]))
+	if (InputPins.IsValidIndex(Index))
 	{
-		PinBreakpoints[InputPins[Index]].MarkAsHit();
-		TryPausingSession(true);
+		const TArray<EFlowTraitType> HitTraitTypes = UFlowDebuggerSubsystem::SetAllTraitsHit(InputPins[Index], true);
+		if (HitTraitTypes.Contains(EFlowTraitType::Breakpoint))
+		{
+			TryPausingSession(true);
+		}
 	}
 
 	TryPausingSession(false);
@@ -938,10 +934,13 @@ void UFlowGraphNode::OnInputTriggered(const int32 Index)
 
 void UFlowGraphNode::OnOutputTriggered(const int32 Index)
 {
-	if (OutputPins.IsValidIndex(Index) && PinBreakpoints.Contains(OutputPins[Index]))
+	if (OutputPins.IsValidIndex(Index))
 	{
-		PinBreakpoints[OutputPins[Index]].MarkAsHit();
-		TryPausingSession(true);
+		const TArray<EFlowTraitType> HitTraitTypes = UFlowDebuggerSubsystem::SetAllTraitsHit(OutputPins[Index], true);
+		if (HitTraitTypes.Contains(EFlowTraitType::Breakpoint))
+		{
+			TryPausingSession(true);
+		}
 	}
 
 	TryPausingSession(false);
@@ -950,9 +949,9 @@ void UFlowGraphNode::OnOutputTriggered(const int32 Index)
 void UFlowGraphNode::TryPausingSession(bool bPauseSession)
 {
 	// Node breakpoints waits on any pin triggered
-	if (NodeBreakpoint.IsEnabled())
+	const TArray<EFlowTraitType> HitTraitTypes = UFlowDebuggerSubsystem::SetAllTraitsHit(this, true);
+	if (HitTraitTypes.Contains(EFlowTraitType::Breakpoint))
 	{
-		NodeBreakpoint.MarkAsHit();
 		bPauseSession = true;
 	}
 
@@ -980,10 +979,10 @@ void UFlowGraphNode::ResetBreakpoints()
 	FEditorDelegates::ResumePIE.RemoveAll(this);
 	FEditorDelegates::EndPIE.RemoveAll(this);
 
-	NodeBreakpoint.ResetHit();
-	for (TPair<FEdGraphPinReference, FFlowPinTrait>& PinBreakpoint : PinBreakpoints)
+	UFlowDebuggerSubsystem::SetTraitHit(this, EFlowTraitType::Breakpoint, false);
+	for (UEdGraphPin* Pin : Pins)
 	{
-		PinBreakpoint.Value.ResetHit();
+		UFlowDebuggerSubsystem::SetTraitHit(Pin, EFlowTraitType::Breakpoint, false);
 	}
 }
 

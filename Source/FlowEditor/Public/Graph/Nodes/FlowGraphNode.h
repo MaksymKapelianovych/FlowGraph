@@ -69,8 +69,8 @@ public:
 // Graph node
 
 public:
-	UPROPERTY()
-	FFlowPinTrait NodeBreakpoint;
+	// UPROPERTY()
+	// FFlowPinTrait NodeBreakpoint;
 
 	// UEdGraphNode
 	virtual bool CanCreateUnderSpecifiedSchema(const UEdGraphSchema* Schema) const override;
@@ -142,8 +142,8 @@ public:
 	TArray<UEdGraphPin*> InputPins;
 	TArray<UEdGraphPin*> OutputPins;
 
-	UPROPERTY()
-	TMap<FEdGraphPinReference, FFlowPinTrait> PinBreakpoints;
+	// UPROPERTY()
+	// TMap<FEdGraphPinReference, FFlowPinTrait> PinBreakpoints;
 
 	void CreateInputPin(const FFlowPin& FlowPin, const int32 Index = INDEX_NONE);
 	void CreateOutputPin(const FFlowPin& FlowPin, const int32 Index = INDEX_NONE);

@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "Asset/FlowDebuggerSubsystem.h"
 #include "Engine/DeveloperSettings.h"
 #include "FlowGraphEditorSettings.generated.h"
 
@@ -11,6 +12,24 @@ enum class EFlowNodeDoubleClickTarget : uint8
 	NodeDefinition               UMETA(Tooltip = "Open node class: either blueprint or C++ class"),
 	PrimaryAsset                 UMETA(Tooltip = "Open asset defined as primary asset, i.e. Dialogue asset for PlayDialogue node"),
 	PrimaryAssetOrNodeDefinition UMETA(Tooltip = "First try opening the asset then if there is none, open the node class") 
+};
+
+USTRUCT()
+struct FLOWEDITOR_API FFlowTraitSettings
+{
+	GENERATED_BODY()
+	
+	UPROPERTY()
+	TArray<FFlowDebugTrait> NodeTraits;
+
+	UPROPERTY()
+	TArray<FFlowDebugTrait> PinTraits;
+
+	bool operator==(const FFlowTraitSettings& Other) const
+	{
+		return NodeTraits == Other.NodeTraits
+			&& PinTraits == Other.PinTraits;
+	}
 };
 
 /**
@@ -59,6 +78,10 @@ class FLOWEDITOR_API UFlowGraphEditorSettings : public UDeveloperSettings
 
 	UPROPERTY(EditAnywhere, config, Category = "Wires")
 	bool bHighlightOutputWiresOfSelectedNodes;
+
+	/** Maps Blueprint path to settings such as breakpoints */
+	UPROPERTY(config)
+	TMap<FGuid, FFlowTraitSettings> PerNodeTraits;
 
 public:
 	virtual FName GetCategoryName() const override { return FName("Flow Graph"); }

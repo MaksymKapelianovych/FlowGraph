@@ -21,6 +21,7 @@
 #include "SNodePanel.h"
 #include "Styling/SlateColor.h"
 #include "TutorialMetaData.h"
+#include "Asset/FlowDebuggerSubsystem.h"
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SBorder.h"
@@ -101,18 +102,18 @@ const FSlateBrush* SFlowGraphNode::GetShadowBrush(bool bSelected) const
 void SFlowGraphNode::GetOverlayBrushes(bool bSelected, const FVector2D WidgetSize, TArray<FOverlayBrushInfo>& Brushes) const
 {
 	// Node breakpoint
-	if (FlowGraphNode->NodeBreakpoint.IsAllowed())
+	if (const FFlowDebugTrait* Trait = UFlowDebuggerSubsystem::FindTrait(FlowGraphNode, EFlowTraitType::Breakpoint))
 	{
 		FOverlayBrushInfo NodeBrush;
 
-		if (FlowGraphNode->NodeBreakpoint.IsHit())
+		if (Trait->IsHit())
 		{
 			NodeBrush.Brush = FFlowEditorStyle::Get()->GetBrush(TEXT("FlowGraph.BreakpointHit"));
 			NodeBrush.OverlayOffset.X = WidgetSize.X - 12.0f;
 		}
 		else
 		{
-			NodeBrush.Brush = FFlowEditorStyle::Get()->GetBrush(FlowGraphNode->NodeBreakpoint.IsEnabled() ? TEXT("FlowGraph.BreakpointEnabled") : TEXT("FlowGraph.BreakpointDisabled"));
+			NodeBrush.Brush = FFlowEditorStyle::Get()->GetBrush(Trait->IsEnabled() ? TEXT("FlowGraph.BreakpointEnabled") : TEXT("FlowGraph.BreakpointDisabled"));
 			NodeBrush.OverlayOffset.X = WidgetSize.X;
 		}
 
@@ -122,41 +123,41 @@ void SFlowGraphNode::GetOverlayBrushes(bool bSelected, const FVector2D WidgetSiz
 	}
 
 	// Pin breakpoints
-	for (const TPair<FEdGraphPinReference, FFlowPinTrait>& PinBreakpoint : FlowGraphNode->PinBreakpoints)
+	for (UEdGraphPin* Pin : FlowGraphNode->Pins)
 	{
-		if (PinBreakpoint.Key.Get()->Direction == EGPD_Input)
+		if (const FFlowDebugTrait* Breakpoint = UFlowDebuggerSubsystem::FindTrait(Pin, EFlowTraitType::Breakpoint))
 		{
-			GetPinBrush(true, WidgetSize.X, FlowGraphNode->InputPins.IndexOfByKey(PinBreakpoint.Key.Get()), PinBreakpoint.Value, Brushes);
-		}
-		else
-		{
-			GetPinBrush(false, WidgetSize.X, FlowGraphNode->OutputPins.IndexOfByKey(PinBreakpoint.Key.Get()), PinBreakpoint.Value, Brushes);
+			if (Pin->Direction == EGPD_Input)
+			{
+				GetPinBrush(true, WidgetSize.X, FlowGraphNode->InputPins.IndexOfByKey(Pin), Breakpoint, Brushes);
+			}
+			else
+			{
+				GetPinBrush(false, WidgetSize.X, FlowGraphNode->OutputPins.IndexOfByKey(Pin), Breakpoint, Brushes);
+			}	
 		}
 	}
 }
 
-void SFlowGraphNode::GetPinBrush(const bool bLeftSide, const float WidgetWidth, const int32 PinIndex, const FFlowPinTrait& Breakpoint, TArray<FOverlayBrushInfo>& Brushes) const
+void SFlowGraphNode::GetPinBrush(const bool bLeftSide, const float WidgetWidth, const int32 PinIndex, const FFlowDebugTrait* Breakpoint, TArray<FOverlayBrushInfo>& Brushes) const
 {
-	if (Breakpoint.IsAllowed())
+	FOverlayBrushInfo PinBrush;
+
+	if (Breakpoint->IsHit())
 	{
-		FOverlayBrushInfo PinBrush;
-
-		if (Breakpoint.IsHit())
-		{
-			PinBrush.Brush = FFlowEditorStyle::Get()->GetBrush(TEXT("FlowGraph.PinBreakpointHit"));
-			PinBrush.OverlayOffset.X = bLeftSide ? 0.0f : (WidgetWidth - 36.0f);
-			PinBrush.OverlayOffset.Y = 12.0f + PinIndex * 28.0f;
-		}
-		else
-		{
-			PinBrush.Brush = FFlowEditorStyle::Get()->GetBrush(Breakpoint.IsEnabled() ? TEXT("FlowGraph.BreakpointEnabled") : TEXT("FlowGraph.BreakpointDisabled"));
-			PinBrush.OverlayOffset.X = bLeftSide ? -24.0f : WidgetWidth;
-			PinBrush.OverlayOffset.Y = 16.0f + PinIndex * 28.0f;
-		}
-
-		PinBrush.AnimationEnvelope = FVector2D(0.f, 10.f);
-		Brushes.Add(PinBrush);
+		PinBrush.Brush = FFlowEditorStyle::Get()->GetBrush(TEXT("FlowGraph.PinBreakpointHit"));
+		PinBrush.OverlayOffset.X = bLeftSide ? 0.0f : (WidgetWidth - 36.0f);
+		PinBrush.OverlayOffset.Y = 12.0f + PinIndex * 28.0f;
 	}
+	else
+	{
+		PinBrush.Brush = FFlowEditorStyle::Get()->GetBrush(Breakpoint->IsEnabled() ? TEXT("FlowGraph.BreakpointEnabled") : TEXT("FlowGraph.BreakpointDisabled"));
+		PinBrush.OverlayOffset.X = bLeftSide ? -24.0f : WidgetWidth;
+		PinBrush.OverlayOffset.Y = 16.0f + PinIndex * 28.0f;
+	}
+
+	PinBrush.AnimationEnvelope = FVector2D(0.f, 10.f);
+	Brushes.Add(PinBrush);
 }
 
 BEGIN_SLATE_FUNCTION_BUILD_OPTIMIZATION
