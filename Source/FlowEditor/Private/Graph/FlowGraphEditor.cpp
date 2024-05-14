@@ -989,10 +989,6 @@ void SFlowGraphEditor::OnDisablePinBreakpoint()
 	if (UEdGraphPin* Pin = GetGraphPinForMenu())
 	{
 		UFlowDebuggerSubsystem::SetTraitEnabled(Pin, EFlowTraitType::Breakpoint, false);
-		// if (UFlowGraphNode* GraphNode = Cast<UFlowGraphNode>(Pin->GetOwningNode()))
-		// {
-		// 	GraphNode->PinBreakpoints[Pin].DisableTrait();
-		// }
 	}
 }
 
