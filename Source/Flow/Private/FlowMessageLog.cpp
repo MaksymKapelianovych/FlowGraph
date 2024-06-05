@@ -61,7 +61,7 @@ TSharedPtr<IMessageToken> FFlowGraphToken::Create(const UFlowNode* InFlowNode, F
 	return nullptr;
 }
 
-TSharedPtr<IMessageToken> FFlowGraphToken::Create(UEdGraphNode* InGraphNode, FTokenizedMessage& Message)
+TSharedPtr<IMessageToken> FFlowGraphToken::Create(const UEdGraphNode* InGraphNode, FTokenizedMessage& Message)
 {
 	if (InGraphNode)
 	{

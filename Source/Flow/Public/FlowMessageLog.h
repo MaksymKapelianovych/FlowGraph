@@ -28,7 +28,7 @@ public:
 	/** Factory method, tokens can only be constructed as shared refs */
 	static TSharedPtr<IMessageToken> Create(const UFlowAsset* InFlowAsset, FTokenizedMessage& Message);
 	static TSharedPtr<IMessageToken> Create(const UFlowNode* InFlowNode, FTokenizedMessage& Message);
-	static TSharedPtr<IMessageToken> Create(UEdGraphNode* InGraphNode, FTokenizedMessage& Message);
+	static TSharedPtr<IMessageToken> Create(const UEdGraphNode* InGraphNode, FTokenizedMessage& Message);
 	static TSharedPtr<IMessageToken> Create(const UEdGraphPin* InPin, FTokenizedMessage& Message);
 
 	const UEdGraphNode* GetGraphNode() const { return GraphNode.Get(); }
