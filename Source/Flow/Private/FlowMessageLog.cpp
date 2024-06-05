@@ -21,7 +21,7 @@ FFlowGraphToken::FFlowGraphToken(const UFlowNode* InFlowNode)
 	CachedText = InFlowNode->GetNodeTitle();
 }
 
-FFlowGraphToken::FFlowGraphToken(UEdGraphNode* InGraphNode, const UEdGraphPin* InPin)
+FFlowGraphToken::FFlowGraphToken(const UEdGraphNode* InGraphNode, const UEdGraphPin* InPin)
 	: GraphNode(InGraphNode)
 	, GraphPin(InPin)
 {

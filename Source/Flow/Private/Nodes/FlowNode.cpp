@@ -868,7 +868,7 @@ FString UFlowNode::GetProgressAsString(const float Value)
 	return FString::Printf(TEXT("%.*f"), 2, Value);
 }
 
-void UFlowNode::LogError(FString Message, const EFlowOnScreenMessageType OnScreenMessageType)
+void UFlowNode::LogError(FString Message, const EFlowOnScreenMessageType OnScreenMessageType) const
 {
 #if !UE_BUILD_SHIPPING
 	if (BuildMessage(Message))
@@ -905,7 +905,7 @@ void UFlowNode::LogError(FString Message, const EFlowOnScreenMessageType OnScree
 #endif
 }
 
-void UFlowNode::LogWarning(FString Message)
+void UFlowNode::LogWarning(FString Message) const
 {
 #if !UE_BUILD_SHIPPING
 	if (BuildMessage(Message))
@@ -921,7 +921,7 @@ void UFlowNode::LogWarning(FString Message)
 #endif
 }
 
-void UFlowNode::LogNote(FString Message)
+void UFlowNode::LogNote(FString Message) const
 {
 #if !UE_BUILD_SHIPPING
 	if (BuildMessage(Message))

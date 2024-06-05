@@ -17,12 +17,12 @@ class UFlowNode;
 class FLOW_API FFlowGraphToken : public IMessageToken
 {
 private:
-	const TWeakObjectPtr<UEdGraphNode> GraphNode;
+	const TWeakObjectPtr<const UEdGraphNode> GraphNode;
 	const FEdGraphPinReference GraphPin;
 
 	explicit FFlowGraphToken(const UFlowAsset* InFlowAsset);
 	explicit FFlowGraphToken(const UFlowNode* InFlowNode);
-	explicit FFlowGraphToken(UEdGraphNode* InGraphNode, const UEdGraphPin* InPin);
+	explicit FFlowGraphToken(const UEdGraphNode* InGraphNode, const UEdGraphPin* InPin);
 
 public:
 	/** Factory method, tokens can only be constructed as shared refs */
