@@ -29,65 +29,66 @@ typedef TFunction<void(UFlowNodeAddOn&)> FFlowNodeAddOnFunction;
  * The base class for UFlowNode and UFlowNodeAddOn, with their shared functionality
  */
 UCLASS(Abstract, HideCategories = Object)
-class FLOW_API UFlowNodeBase 
+class FLOW_API UFlowNodeBase
 	: public UObject
-	, public IFlowCoreExecutableInterface
-	, public IFlowContextPinSupplierInterface
+	  , public IFlowCoreExecutableInterface
+	  , public IFlowContextPinSupplierInterface
 {
 	GENERATED_UCLASS_BODY()
 
+	friend class SFlowGraphNode;
+	friend class UFlowAsset;
+	friend class UFlowGraphNode;
+	friend class UFlowGraphSchema;
+
+//////////////////////////////////////////////////////////////////////////
+// Node
+
+public:
 	// UObject
 	virtual UWorld* GetWorld() const override;
-#if WITH_EDITOR
-	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-#endif
 	// --
 
 	// IFlowCoreExecutableInterface
-	virtual void InitializeInstance();
-	virtual void DeinitializeInstance();
-	virtual void PreloadContent();
-	virtual void FlushContent();
-	virtual void OnActivate();
-	virtual void Cleanup();
-	virtual void ForceFinishNode();
-	virtual void ExecuteInput(const FName& PinName);
+	virtual void InitializeInstance() override;
+	virtual void DeinitializeInstance() override;
+
+	virtual void PreloadContent() override;
+	virtual void FlushContent() override;
+
+	virtual void OnActivate() override;
+	virtual void ExecuteInput(const FName& PinName) override;
+
+	virtual void ForceFinishNode() override;
+	virtual void Cleanup() override;
 	// --
 
-	// UFlowNodeBase
-	virtual bool IsSupportedInputPinName(const FName& PinName) const PURE_VIRTUAL(IsSupportedInputPinName, return true;);
-
-protected:
-	// FlowNodes and AddOns may determine which AddOns are eligible to be their children
-	UFUNCTION(BlueprintNativeEvent, BlueprintPure)
-	EFlowAddOnAcceptResult AcceptFlowNodeAddOnChild(const UFlowNodeAddOn* AddOnTemplate) const;
+//////////////////////////////////////////////////////////////////////////
+// Pins	
 
 public:
+	static const FFlowPin* FindFlowPinByName(const FName& PinName, const TArray<FFlowPin>& FlowPins);
+	virtual bool IsSupportedInputPinName(const FName& PinName) const PURE_VIRTUAL(IsSupportedInputPinName, return true;);
+
 #if WITH_EDITOR
-	EFlowAddOnAcceptResult CheckAcceptFlowNodeAddOnChild(const UFlowNodeAddOn* AddOnTemplate) const;
-	virtual TArray<UFlowNodeAddOn*>& GetFlowNodeAddOnChildrenByEditor() { return AddOns; }
-#endif // WITH_EDITOR
-	virtual const TArray<UFlowNodeAddOn*>& GetFlowNodeAddOnChildren() const { return AddOns; }
-
-	virtual UFlowNode* GetFlowNodeSelfOrOwner() PURE_VIRTUAL(GetFlowNodeSelfOrOwner, return nullptr;);
-	const UFlowNode* GetFlowNodeSelfOrOwner() const { return const_cast<UFlowNodeBase*>(this)->GetFlowNodeSelfOrOwner(); }
-
-	// Call a Function for all of this object's AddOns (including all AddOn's AddOns, ie recursively)
-	void ForEachAddOnConst(FConstFlowNodeAddOnFunction Function) const;
-	void ForEachAddOn(FFlowNodeAddOnFunction Function) const;
-
-	template <typename TInterfaceOrClass>
-	void ForEachAddOnForClassConst(FConstFlowNodeAddOnFunction Function) const { ForEachAddOnForClassConst(*TInterfaceOrClass::StaticClass(), Function); }
-	void ForEachAddOnForClassConst(const UClass& InterfaceOrClass, FConstFlowNodeAddOnFunction Function) const;
-
-	template <typename TInterfaceOrClass>
-	void ForEachAddOnForClass(FFlowNodeAddOnFunction Function) const { ForEachAddOnForClass(*TInterfaceOrClass::StaticClass(), Function); }
-	void ForEachAddOnForClass(const UClass& InterfaceOrClass, FFlowNodeAddOnFunction Function) const;
+public:	
+	// IFlowContextPinSupplierInterface
+	virtual bool SupportsContextPins() const override { return false; }
+	virtual TArray<FFlowPin> GetContextInputs() const override;
+	virtual TArray<FFlowPin> GetContextOutputs() const override;
 	// --
+#endif // WITH_EDITOR
+	
+//////////////////////////////////////////////////////////////////////////
+// Owners
 
+public:	
 	UFUNCTION(BlueprintPure, Category = "FlowNode")
 	UFlowAsset* GetFlowAsset() const;
 
+	const UFlowNode* GetFlowNodeSelfOrOwner() const;
+	virtual UFlowNode* GetFlowNodeSelfOrOwner() PURE_VIRTUAL(GetFlowNodeSelfOrOwner, return nullptr;);
+	
 	UFUNCTION(BlueprintPure, Category = "FlowNode")
 	UFlowSubsystem* GetFlowSubsystem() const;
 
@@ -105,59 +106,149 @@ public:
 	IFlowOwnerInterface* GetFlowOwnerInterface() const;
 
 protected:
-
 	// Helper functions for GetFlowOwnerInterface()
-	IFlowOwnerInterface* TryGetFlowOwnerInterfaceFromRootFlowOwner(UObject& RootFlowOwner, const UClass& ExpectedOwnerClass) const;
-	IFlowOwnerInterface* TryGetFlowOwnerInterfaceActor(UObject& RootFlowOwner, const UClass& ExpectedOwnerClass) const;
+	static IFlowOwnerInterface* TryGetFlowOwnerInterfaceFromRootFlowOwner(UObject& RootFlowOwner, const UClass& ExpectedOwnerClass);
+	static IFlowOwnerInterface* TryGetFlowOwnerInterfaceActor(UObject& RootFlowOwner, const UClass& ExpectedOwnerClass);
+
+//////////////////////////////////////////////////////////////////////////
+// AddOn support
+
+protected:
+	// Flow Node AddOn attachments
+	UPROPERTY(BlueprintReadOnly, Instanced, Category = "FlowNode")
+	TArray<UFlowNodeAddOn*> AddOns;
+
+protected:
+	// FlowNodes and AddOns may determine which AddOns are eligible to be their children
+	UFUNCTION(BlueprintNativeEvent, BlueprintPure, Category = "FlowNode")
+	EFlowAddOnAcceptResult AcceptFlowNodeAddOnChild(const UFlowNodeAddOn* AddOnTemplate) const;
 
 public:
-
-	// Set the editor-only Config Text 
-	// (for displaying config info on the Node in the flow graph, ignored in non-editor builds)
-	UFUNCTION(BlueprintCallable)
-	void SetNodeConfigText(const FText& NodeConfigText);
-
-	// Called whenever a property change event occurs on this flow node object,
-	// giving the implementor a chance to update their NodeConfigText (via SetNodeConfigText)
-	UFUNCTION(BlueprintNativeEvent)
-	void UpdateNodeConfigText();
+	virtual const TArray<UFlowNodeAddOn*>& GetFlowNodeAddOnChildren() const { return AddOns; }
 
 #if WITH_EDITOR
+	virtual TArray<UFlowNodeAddOn*>& GetFlowNodeAddOnChildrenByEditor() { return AddOns; }
+	EFlowAddOnAcceptResult CheckAcceptFlowNodeAddOnChild(const UFlowNodeAddOn* AddOnTemplate) const;
+#endif // WITH_EDITOR
+
+	// Call a function for all of this object's AddOns (recursively iterating AddOns inside AddOn)
+	void ForEachAddOnConst(const FConstFlowNodeAddOnFunction& Function) const;
+	void ForEachAddOn(const FFlowNodeAddOnFunction& Function) const;
+
+	template <typename TInterfaceOrClass>
+	void ForEachAddOnForClassConst(const FConstFlowNodeAddOnFunction Function) const
+	{
+		ForEachAddOnForClassConst(*TInterfaceOrClass::StaticClass(), Function);
+	}
+
+	void ForEachAddOnForClassConst(const UClass& InterfaceOrClass, const FConstFlowNodeAddOnFunction& Function) const;
+
+	template <typename TInterfaceOrClass>
+	void ForEachAddOnForClass(const FFlowNodeAddOnFunction Function) const
+	{
+		ForEachAddOnForClass(*TInterfaceOrClass::StaticClass(), Function);
+	}
+
+	void ForEachAddOnForClass(const UClass& InterfaceOrClass, const FFlowNodeAddOnFunction& Function) const;
+
+//////////////////////////////////////////////////////////////////////////
+// Editor
+// (some editor symbols exposed to enabled creation of non-editor tooling)
+
+	UPROPERTY()
+	UEdGraphNode* GraphNode;
+	
+#if WITH_EDITORONLY_DATA
+protected:
+	uint8 bCanDelete : 1 ;
+	uint8 bCanDuplicate : 1;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "FlowNode")
+	bool bNodeDeprecated;
+
+	// If this node is deprecated, it might be replaced by another node
+	UPROPERTY(EditDefaultsOnly, Category = "FlowNode")
+	TSubclassOf<UFlowNode> ReplacedBy;
+
+	FFlowNodeEvent OnReconstructionRequested;
+	FFlowMessageLog ValidationLog;
+#endif // WITH_EDITORONLY_DATA
+
+public:
 	UEdGraphNode* GetGraphNode() const { return GraphNode; }
+
+#if WITH_EDITOR
+	void SetGraphNode(UEdGraphNode* NewGraphNode);
+
+	// Set up UFlowNodeBase when being opened for edit in the editor
+	virtual void SetupForEditing(UEdGraphNode& EdGraphNode);
 
 	// Opportunity to update node's data before UFlowGraphNode would call ReconstructNode()
 	virtual void FixNode(UEdGraphNode* NewGraphNode);
 
-	void SetGraphNode(UEdGraphNode* NewGraphNode);
+	// UObject
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+	// --
 	
-	// Setup the UFlowNodeBase when being opened for edit in the editor
-	virtual void SetupForEditing(UEdGraphNode& EdGraphNode);
+	// used when import graph from another asset
+	virtual void PostImport() {}
+#endif
 
+#if WITH_EDITORONLY_DATA
+protected:
+	UPROPERTY()
+	FString Category;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "FlowNode")
+	EFlowNodeStyle NodeStyle;
+
+	// Set Node Style to custom to use your own color for this node
+	UPROPERTY(EditDefaultsOnly, Category = "FlowNode", meta = (EditCondition = "NodeStyle == EFlowNodeStyle::Custom"))
+	FLinearColor NodeColor;
+
+	// Optional developer-facing text to explain the configuration of this node when viewed in the editor
+	// may be authored or set procedurally via UpdateNodeConfigText and SetNodeConfigText
+	UPROPERTY(EditDefaultsOnly, AdvancedDisplay, Category = "FlowNode")
+	FText DevNodeConfigText;
+#endif // WITH_EDITORONLY_DATA
+
+#if WITH_EDITOR
+public:
 	virtual FString GetNodeCategory() const;
-	virtual FText GetNodeTitle() const;
-	virtual FText GetNodeToolTip() const;
-	virtual FText GetNodeConfigText() const;
+	EFlowNodeStyle GetNodeStyle() const;
 
 	// This method allows to have different for every node instance, i.e. Red if node represents enemy, Green if node represents a friend
 	virtual bool GetDynamicTitleColor(FLinearColor& OutColor) const;
+	
+	virtual FText GetNodeTitle() const;
+	virtual FText GetNodeToolTip() const;
+	virtual FText GetNodeConfigText() const;
+#endif
 
-	EFlowNodeStyle GetNodeStyle() const { return NodeStyle; }
+protected:	
+	// Set the editor-only Config Text 
+	// (for displaying config info on the Node in the flow graph, ignored in non-editor builds)
+	UFUNCTION(BlueprintCallable, Category = "FlowNode")
+	void SetNodeConfigText(const FText& NodeConfigText);
 
+	// Called whenever a property change event occurs on this flow node object,
+	// giving the implementor a chance to update their NodeConfigText (via SetNodeConfigText)
+	UFUNCTION(BlueprintNativeEvent, Category = "FlowNode")
+	void UpdateNodeConfigText();
+
+//////////////////////////////////////////////////////////////////////////
+// Debug support
+	
+#if WITH_EDITOR
+public:
 	// Short summary of node's content - displayed over node as NodeInfoPopup
 	virtual FString GetNodeDescription() const;
+#endif
 
-	// used when import graph from another asset
-	virtual void PostImport() {}
-
-	// IFlowContextPinSupplierInterface
-	virtual bool SupportsContextPins() const override { return false; }
-	virtual TArray<FFlowPin> GetContextInputs() const override;
-	virtual TArray<FFlowPin> GetContextOutputs() const override;
-	// --
-
-#endif // WITH_EDITOR
-
-	static const FFlowPin* FindFlowPinByName(const FName& PinName, const TArray<FFlowPin>& FlowPins);
+protected:	
+	// Short summary of node's content - displayed over node as NodeInfoPopup
+	UFUNCTION(BlueprintImplementableEvent, Category = "FlowNode", meta = (DisplayName = "Get Node Description"))
+	FString K2_GetNodeDescription() const;
 
 	UFUNCTION(BlueprintCallable, Category = "FlowNode", meta = (DevelopmentOnly))
 	void LogError(FString Message, const EFlowOnScreenMessageType OnScreenMessageType = EFlowOnScreenMessageType::Permanent) const;
@@ -169,55 +260,7 @@ public:
 	void LogNote(FString Message) const;
 
 #if !UE_BUILD_SHIPPING
-private:
+protected:
 	bool BuildMessage(FString& Message) const;
 #endif
-
-protected:
-	// Short summary of node's content - displayed over node as NodeInfoPopup
-	UFUNCTION(BlueprintImplementableEvent, Category = "FlowNode", meta = (DisplayName = "Get Node Description"))
-	FString K2_GetNodeDescription() const;
-
-protected:
-	// Flow Node AddOn attachments
-	UPROPERTY(BlueprintReadOnly, Instanced, Category = "Configuration")
-	TArray<UFlowNodeAddOn*> AddOns;
-
-#if WITH_EDITORONLY_DATA
-
-	UPROPERTY()
-	UEdGraphNode* GraphNode = nullptr;
-
-public:
-	UPROPERTY(EditDefaultsOnly, Category = "FlowNode")
-	EFlowNodeStyle NodeStyle = EFlowNodeStyle::Default;
-
-	// Set Node Style to custom to use your own color for this node
-	UPROPERTY(EditDefaultsOnly, Category = "FlowNode", meta = (EditCondition = "NodeStyle == EFlowNodeStyle::Custom"))
-	FLinearColor NodeColor = FLinearColor::Black;
-
-	uint8 bCanDelete : 1 = true;
-	uint8 bCanDuplicate : 1 = true;
-
-	UPROPERTY()
-	FString Category;
-
-	// Optional developer-facing text to explain the configuration of this node when viewed in the editor
-	// may be authored or set procedurally via UpdateNodeConfigText and SetNodeConfigText
-	UPROPERTY(EditDefaultsOnly, AdvancedDisplay, Category = "Configuration")
-	FText DevNodeConfigText = FText::GetEmpty();
-
-	UPROPERTY(EditDefaultsOnly, Category = "FlowNode")
-	bool bNodeDeprecated = false;
-
-	// If this node is deprecated, it might be replaced by another node
-	UPROPERTY(EditDefaultsOnly, Category = "FlowNode")
-	TSubclassOf<UFlowNode> ReplacedBy;
-
-	FFlowNodeEvent OnReconstructionRequested;
-
-	FFlowMessageLog ValidationLog;
-
-#endif // WITH_EDITORONLY_DATA
 };
-
