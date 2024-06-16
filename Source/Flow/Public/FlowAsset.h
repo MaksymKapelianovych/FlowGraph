@@ -81,7 +81,7 @@ public:
 	virtual EDataValidationResult ValidateAsset(FFlowMessageLog& MessageLog);
 
 	// Returns whether the node class is allowed in this flow asset
-	bool IsNodeClassAllowed(const UClass* FlowNodeClass, FText* OutOptionalFailureReason = nullptr) const;
+	bool IsNodeOrAddOnClassAllowed(const UClass* FlowNodeClass, FText* OutOptionalFailureReason = nullptr) const;
 
 	static FString ValidationError_NodeClassNotAllowed;
 	static FString ValidationError_NullNodeInstance;
@@ -97,7 +97,7 @@ protected:
 
 private:
 	UPROPERTY()
-	TObjectPtr<UEdGraph> FlowGraph;
+	UEdGraph* FlowGraph;
 
 	static TSharedPtr<IFlowGraphInterface> FlowGraphInterface;
 #endif
@@ -412,8 +412,8 @@ public:
 
 #if WITH_EDITOR
 public:
-	void LogError(const FString& MessageToLog, const UFlowNode* Node) const;
-	void LogWarning(const FString& MessageToLog, const UFlowNode* Node) const;
-	void LogNote(const FString& MessageToLog, const UFlowNode* Node) const;
+	void LogError(const FString& MessageToLog, UFlowNodeBase* Node) const;
+	void LogWarning(const FString& MessageToLog, UFlowNodeBase* Node) const;
+	void LogNote(const FString& MessageToLog, UFlowNodeBase* Node) const;
 #endif
 };
