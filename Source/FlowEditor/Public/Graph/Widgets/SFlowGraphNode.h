@@ -34,7 +34,7 @@ protected:
 	// --
 
 	// SGraphNode
-	virtual void GetPinBrush(const bool bLeftSide, const float WidgetWidth, const int32 PinIndex, const struct FFlowPinTrait& Breakpoint, TArray<FOverlayBrushInfo>& Brushes) const;
+	virtual void GetPinBrush(const bool bLeftSide, const float WidgetWidth, const int32 PinIndex, const struct FFlowDebugTrait* Breakpoint, TArray<FOverlayBrushInfo>& Brushes) const;
 
 	virtual FText GetTitle() const;
 	virtual FText GetDescription() const;
