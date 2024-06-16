@@ -907,7 +907,7 @@ bool UFlowAsset::IsBoundToWorld_Implementation()
 }
 
 #if WITH_EDITOR
-void UFlowAsset::LogError(const FString& MessageToLog, UFlowNodeBase* Node) const
+void UFlowAsset::LogError(const FString& MessageToLog, const UFlowNodeBase* Node) const
 {
 	// this is runtime log which is should be only called on runtime instances of asset
 	if (TemplateAsset == nullptr)
@@ -922,7 +922,7 @@ void UFlowAsset::LogError(const FString& MessageToLog, UFlowNodeBase* Node) cons
 	}
 }
 
-void UFlowAsset::LogWarning(const FString& MessageToLog, UFlowNodeBase* Node) const
+void UFlowAsset::LogWarning(const FString& MessageToLog, const UFlowNodeBase* Node) const
 {
 	// this is runtime log which is should be only called on runtime instances of asset
 	if (TemplateAsset == nullptr)
@@ -937,7 +937,7 @@ void UFlowAsset::LogWarning(const FString& MessageToLog, UFlowNodeBase* Node) co
 	}
 }
 
-void UFlowAsset::LogNote(const FString& MessageToLog, UFlowNodeBase* Node) const
+void UFlowAsset::LogNote(const FString& MessageToLog, const UFlowNodeBase* Node) const
 {
 	// this is runtime log which is should be only called on runtime instances of asset
 	if (TemplateAsset == nullptr)

@@ -412,8 +412,8 @@ public:
 
 #if WITH_EDITOR
 public:
-	void LogError(const FString& MessageToLog, UFlowNodeBase* Node) const;
-	void LogWarning(const FString& MessageToLog, UFlowNodeBase* Node) const;
-	void LogNote(const FString& MessageToLog, UFlowNodeBase* Node) const;
+	void LogError(const FString& MessageToLog, const UFlowNodeBase* Node) const;
+	void LogWarning(const FString& MessageToLog, const UFlowNodeBase* Node) const;
+	void LogNote(const FString& MessageToLog, const UFlowNodeBase* Node) const;
 #endif
 };

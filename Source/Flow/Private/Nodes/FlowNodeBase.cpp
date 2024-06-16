@@ -298,7 +298,7 @@ UWorld* UFlowNodeBase::GetWorld() const
 	return nullptr;
 }
 
-void UFlowNodeBase::LogError(FString Message, const EFlowOnScreenMessageType OnScreenMessageType)
+void UFlowNodeBase::LogError(FString Message, const EFlowOnScreenMessageType OnScreenMessageType) const
 {
 #if !UE_BUILD_SHIPPING
 	if (BuildMessage(Message))
@@ -336,7 +336,7 @@ void UFlowNodeBase::LogError(FString Message, const EFlowOnScreenMessageType OnS
 #endif
 }
 
-void UFlowNodeBase::LogWarning(FString Message)
+void UFlowNodeBase::LogWarning(FString Message) const
 {
 #if !UE_BUILD_SHIPPING
 	if (BuildMessage(Message))
@@ -352,7 +352,7 @@ void UFlowNodeBase::LogWarning(FString Message)
 #endif
 }
 
-void UFlowNodeBase::LogNote(FString Message)
+void UFlowNodeBase::LogNote(FString Message) const
 {
 #if !UE_BUILD_SHIPPING
 	if (BuildMessage(Message))

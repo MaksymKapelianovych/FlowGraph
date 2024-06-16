@@ -160,23 +160,13 @@ public:
 	static const FFlowPin* FindFlowPinByName(const FName& PinName, const TArray<FFlowPin>& FlowPins);
 
 	UFUNCTION(BlueprintCallable, Category = "FlowNode", meta = (DevelopmentOnly))
-	void LogError(FString Message, const EFlowOnScreenMessageType OnScreenMessageType = EFlowOnScreenMessageType::Permanent);
-
-	// LogError from constant function (allowing this to be modified only to log the error itself)
-	FORCEINLINE void LogErrorConst(FString Message, const EFlowOnScreenMessageType OnScreenMessageType = EFlowOnScreenMessageType::Permanent) const
-		{ const_cast<UFlowNodeBase*>(this)->LogError(Message, OnScreenMessageType); }
+	void LogError(FString Message, const EFlowOnScreenMessageType OnScreenMessageType = EFlowOnScreenMessageType::Permanent) const;
 
 	UFUNCTION(BlueprintCallable, Category = "FlowNode", meta = (DevelopmentOnly))
-	void LogWarning(FString Message);
-
-	// LogWarning from constant function (allowing this to be modified only to log the warning itself)
-	FORCEINLINE void LogWarningConst(FString Message) const { const_cast<UFlowNodeBase*>(this)->LogWarning(Message); }
+	void LogWarning(FString Message) const;
 
 	UFUNCTION(BlueprintCallable, Category = "FlowNode", meta = (DevelopmentOnly))
-	void LogNote(FString Message);
-
-	// LogNote from constant function (allowing this to be modified only to log the note itself)
-	FORCEINLINE void LogNoteConst(FString Message) const { const_cast<UFlowNodeBase*>(this)->LogNote(Message); }
+	void LogNote(FString Message) const;
 
 #if !UE_BUILD_SHIPPING
 private:
