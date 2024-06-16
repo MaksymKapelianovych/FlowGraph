@@ -3,6 +3,7 @@
 #include "LevelSequence/FlowLevelSequenceActor.h"
 #include "LevelSequence/FlowLevelSequencePlayer.h"
 #include "Net/UnrealNetwork.h"
+#include "Runtime/Launch/Resources/Version.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(FlowLevelSequenceActor)
 
