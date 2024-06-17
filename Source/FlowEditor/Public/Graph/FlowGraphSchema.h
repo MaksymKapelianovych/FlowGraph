@@ -99,5 +99,9 @@ public:
 	static FFlowGraphSchemaRefresh OnNodeListChanged;
 	static UBlueprint* GetPlaceableNodeOrAddOnBlueprint(const FAssetData& AssetData);
 
-	static const UFlowAsset* GetAssetClassDefaults(const UEdGraph* Graph);
+	static const UFlowAsset* GetEditedAssetOrClassDefault(const UEdGraph* Graph);
+
+private:
+	// ID for checking dirty status of node titles against
+	static int32 CurrentCacheRefreshID;
 };

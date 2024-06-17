@@ -47,6 +47,7 @@ UFlowGraphSettings::UFlowGraphSettings(const FObjectInitializer& ObjectInitializ
 
 	NodePrefixesToRemove.Emplace("FN");
 	NodePrefixesToRemove.Emplace("FlowNode");
+	NodePrefixesToRemove.Emplace("FlowNodeAddOn");
 }
 
 void UFlowGraphSettings::PostInitProperties()
