@@ -1176,13 +1176,13 @@ void UFlowGraphNode::PostEditUndo()
 	}
 }
 
-void UFlowGraphNode::LogError(const FString& MessageToLog, const UFlowNodeBase* FlowNodeBase)
+void UFlowGraphNode::LogError(const FString& MessageToLog, const UFlowNodeBase* FlowNodeBase)  const
 {
 	if (UFlowGraph* FlowGraph = GetFlowGraph())
 	{
 		if (UFlowAsset* FlowAsset = FlowGraph->GetFlowAsset())
 		{
-			FlowAsset->LogError(MessageToLog, const_cast<UFlowNodeBase*>(FlowNodeBase));
+			FlowAsset->LogError(MessageToLog, FlowNodeBase);
 		}
 	}
 }

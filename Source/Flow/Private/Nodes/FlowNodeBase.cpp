@@ -390,7 +390,7 @@ EFlowAddOnAcceptResult UFlowNodeBase::CheckAcceptFlowNodeAddOnChild(const UFlowN
 		AddOnTemplate->IsA<UFlowNode>())
 	{
 		const FString Message = FString::Printf(TEXT("%s::AcceptFlowNodeAddOnParent must always Reject for UFlowNode subclasses"), *GetClass()->GetName());
-		GetFlowAsset()->GetTemplateAsset()->LogError(Message, const_cast<UFlowNodeBase*>(this));
+		GetFlowAsset()->GetTemplateAsset()->LogError(Message, this);
 
 		return EFlowAddOnAcceptResult::Reject;
 	}
