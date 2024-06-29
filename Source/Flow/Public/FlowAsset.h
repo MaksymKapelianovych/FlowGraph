@@ -61,7 +61,7 @@ public:
 	FGuid AssetGuid;
 
 	// Set it to False, if this asset is instantiated as Root Flow for owner that doesn't live in the world
-	// This allow to SaveGame support works properly, if owner of Root Flow would be Game Instance or its subsystem
+	// This allows to SaveGame support works properly, if owner of Root Flow would be Game Instance or its subsystem
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Flow Asset")
 	bool bWorldBound;
 
@@ -412,8 +412,8 @@ public:
 
 #if WITH_EDITOR
 public:
-	void LogError(const FString& MessageToLog, UFlowNode* Node);
-	void LogWarning(const FString& MessageToLog, UFlowNode* Node);
-	void LogNote(const FString& MessageToLog, UFlowNode* Node);
+	void LogError(const FString& MessageToLog, const UFlowNode* Node) const;
+	void LogWarning(const FString& MessageToLog, const UFlowNode* Node) const;
+	void LogNote(const FString& MessageToLog, const UFlowNode* Node) const;
 #endif
 };

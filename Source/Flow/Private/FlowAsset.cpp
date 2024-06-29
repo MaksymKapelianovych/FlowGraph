@@ -21,14 +21,12 @@
 
 #include "Editor.h"
 #include "Editor/EditorEngine.h"
-#endif
 
-#include UE_INLINE_GENERATED_CPP_BY_NAME(FlowAsset)
-
-#if WITH_EDITOR
 FString UFlowAsset::ValidationError_NodeClassNotAllowed = TEXT("Node class {0} is not allowed in this asset.");
 FString UFlowAsset::ValidationError_NullNodeInstance = TEXT("Node with GUID {0} is NULL");
 #endif
+
+#include UE_INLINE_GENERATED_CPP_BY_NAME(FlowAsset)
 
 UFlowAsset::UFlowAsset(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -891,7 +889,7 @@ bool UFlowAsset::IsBoundToWorld_Implementation()
 }
 
 #if WITH_EDITOR
-void UFlowAsset::LogError(const FString& MessageToLog, UFlowNode* Node)
+void UFlowAsset::LogError(const FString& MessageToLog, const UFlowNode* Node) const
 {
 	// this is runtime log which is should be only called on runtime instances of asset
 	if (TemplateAsset == nullptr)
@@ -906,7 +904,7 @@ void UFlowAsset::LogError(const FString& MessageToLog, UFlowNode* Node)
 	}
 }
 
-void UFlowAsset::LogWarning(const FString& MessageToLog, UFlowNode* Node)
+void UFlowAsset::LogWarning(const FString& MessageToLog, const UFlowNode* Node) const
 {
 	// this is runtime log which is should be only called on runtime instances of asset
 	if (TemplateAsset == nullptr)
@@ -921,7 +919,7 @@ void UFlowAsset::LogWarning(const FString& MessageToLog, UFlowNode* Node)
 	}
 }
 
-void UFlowAsset::LogNote(const FString& MessageToLog, UFlowNode* Node)
+void UFlowAsset::LogNote(const FString& MessageToLog, const UFlowNode* Node) const
 {
 	// this is runtime log which is should be only called on runtime instances of asset
 	if (TemplateAsset == nullptr)

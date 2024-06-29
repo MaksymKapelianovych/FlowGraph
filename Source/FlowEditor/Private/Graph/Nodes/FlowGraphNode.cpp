@@ -99,6 +99,11 @@ void UFlowGraphNode::PostEditImport()
 
 	PostCopyNode();
 	SubscribeToExternalChanges();
+	
+	/*if (FlowNode)
+	{
+		InitializeInstance();
+	}*/
 }
 
 void UFlowGraphNode::PostPlacedNewNode()
@@ -106,6 +111,27 @@ void UFlowGraphNode::PostPlacedNewNode()
 	Super::PostPlacedNewNode();
 
 	SubscribeToExternalChanges();
+
+	// NOTE - NodeInstance can be already spawned by paste operation, don't override it
+
+	/*if (NodeInstanceClass.IsPending())
+	{
+		NodeInstanceClass.LoadSynchronous();
+	}
+
+	UClass* NodeClass = NodeInstanceClass.Get();
+	if (NodeClass && (NodeInstance == nullptr))
+	{
+		UEdGraph* MyGraph = GetGraph();
+		UObject* GraphOwner = MyGraph ? MyGraph->GetOuter() : nullptr;
+		if (GraphOwner)
+		{
+			NodeInstance = Cast<UFlowNodeBase>(NewObject<UObject>(GraphOwner, NodeClass));
+			NodeInstance->SetFlags(RF_Transactional);
+
+			InitializeInstance();
+		}
+	}*/
 }
 
 void UFlowGraphNode::PrepareForCopying()
@@ -856,6 +882,27 @@ void UFlowGraphNode::RemoveInstancePin(UEdGraphPin* Pin)
 
 void UFlowGraphNode::RefreshContextPins(const bool bReconstructNode)
 {
+	/*UFlowNode* FlowNode = Cast<UFlowNode>(NodeInstance);
+	if (!IsValid(FlowNode))
+	{
+		return;
+	}
+
+	const bool bShouldConsiderRefreshingContextPins = SupportsContextPins() || bHasContextPins;
+	if (!bShouldConsiderRefreshingContextPins)
+	{
+		return;
+	}
+
+	const TArray<FFlowPin> ContextInputs = FlowNode->GetContextInputs();
+	const TArray<FFlowPin> ContextOutputs = FlowNode->GetContextOutputs();
+
+	const bool bPrevHasContextPins = bHasContextPins;
+	bHasContextPins = !ContextInputs.IsEmpty() || !ContextOutputs.IsEmpty();
+
+	// Skip the rest if the node went from no ContextPins to no ContextPins
+	const bool bMaintainedNoContextPins = !bPrevHasContextPins && !bHasContextPins;
+*/
 	if (SupportsContextPins())
 	{
 		const FScopedTransaction Transaction(LOCTEXT("RefreshContextPins", "Refresh Context Pins"));
@@ -1028,5 +1075,13 @@ bool UFlowGraphNode::CanSetSignalMode(const EFlowSignalMode Mode) const
 {
 	return FlowNode ? (FlowNode->AllowedSignalModes.Contains(Mode) && FlowNode->SignalMode != Mode) : false;
 }
+
+/*void UFlowGraphNode::InitializeInstance()
+{
+	check(NodeInstance);
+
+	// link editor and runtime nodes together
+	NodeInstance->SetGraphNode(this);
+}*/
 
 #undef LOCTEXT_NAMESPACE
