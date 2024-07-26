@@ -12,5 +12,6 @@ class FLOWEDITOR_API UFlowGraphNode_Start : public UFlowGraphNode
 
 	// UEdGraphNode
 	virtual TSharedPtr<SGraphNode> CreateVisualWidget() override;
+	virtual bool CanPasteHere( const UEdGraph* TargetGraph ) const override;
 	// --
 };

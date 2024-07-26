@@ -146,4 +146,7 @@ private:
 
 	void JumpToNodeDefinition() const;
 	bool CanJumpToNodeDefinition() const;
+
+private:
+	bool bIsDuplicating = false;
 };

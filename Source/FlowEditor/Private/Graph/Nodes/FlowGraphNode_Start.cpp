@@ -17,3 +17,8 @@ TSharedPtr<SGraphNode> UFlowGraphNode_Start::CreateVisualWidget()
 {
 	return SNew(SFlowGraphNode_Start, this);
 }
+
+bool UFlowGraphNode_Start::CanPasteHere( const UEdGraph* TargetGraph ) const
+{
+	return false;
+}

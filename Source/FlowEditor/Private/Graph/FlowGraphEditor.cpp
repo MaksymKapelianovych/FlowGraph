@@ -3,7 +3,6 @@
 #include "Graph/FlowGraphEditor.h"
 
 #include "FlowEditorCommands.h"
-#include "FlowEditorModule.h"
 
 #include "Asset/FlowAssetEditor.h"
 #include "Asset/FlowDebuggerSubsystem.h"
@@ -11,6 +10,7 @@
 #include "Graph/FlowGraphSchema_Actions.h"
 #include "Graph/Nodes/FlowGraphNode.h"
 #include "Nodes/Route/FlowNode_SubGraph.h"
+#include "AddOns/FlowNodeAddOn.h"
 
 #include "Framework/Application/SlateApplication.h"
 #include "Framework/Commands/GenericCommands.h"
@@ -20,6 +20,9 @@
 #include "Modules/ModuleManager.h"
 #include "ScopedTransaction.h"
 #include "Widgets/Docking/SDockTab.h"
+
+#include "Framework/Notifications/NotificationManager.h"
+#include "Widgets/Notifications/SNotificationList.h"
 
 #define LOCTEXT_NAMESPACE "FlowGraphEditor"
 
@@ -531,14 +534,12 @@ bool SFlowGraphEditor::CanDeleteNodes() const
 		{
 			if (const UEdGraphNode* Node = Cast<UEdGraphNode>(*NodeIt))
 			{
-				if (!Node->CanUserDeleteNode())
+				if (Node->CanUserDeleteNode())
 				{
-					return false;
+					return true;
 				}
 			}
 		}
-
-		return SelectedNodes.Num() > 0;
 	}
 
 	return false;
@@ -570,6 +571,10 @@ void SFlowGraphEditor::CopySelectedNodes() const
 			constexpr int32 RootEdNodeParentIndex = INDEX_NONE;
 			PrepareFlowGraphNodeForCopy(*FlowGraphNode, RootEdNodeParentIndex, NewSelectedNodes);
 		}
+		else
+		{
+			NewSelectedNodes.Add(*SelectedIter);
+		}
 	}
 
 	FString ExportedText;
@@ -589,13 +594,18 @@ void SFlowGraphEditor::CopySelectedNodes() const
 
 void SFlowGraphEditor::PrepareFlowGraphNodeForCopy(UFlowGraphNode& FlowGraphNode, int32 ParentEdNodeIndex, FGraphPanelSelectionSet& NewSelectedNodes) const
 {
-	FlowGraphNode.PrepareForCopying();
-
-	FlowGraphNode.CopySubNodeParentIndex = ParentEdNodeIndex;
-
 	const int32 ThisFlowGraphNodeIndex = NewSelectedNodes.Num();
+	bool bAlreadyInSet = false;
+	NewSelectedNodes.Add(&FlowGraphNode, &bAlreadyInSet);
+
+	if (bAlreadyInSet)
+	{
+		return;
+	}
+
+	FlowGraphNode.PrepareForCopying();
+	FlowGraphNode.CopySubNodeParentIndex = ParentEdNodeIndex;
 	FlowGraphNode.CopySubNodeIndex = ThisFlowGraphNodeIndex;
-	NewSelectedNodes.Add(&FlowGraphNode);
 
 	// append all subnodes for selection
 	const TArray<UFlowGraphNode*>& FlowGraphNodeSubNodes = FlowGraphNode.SubNodes;
@@ -655,12 +665,11 @@ void SFlowGraphEditor::PasteNodesHere(const FVector2D& Location)
 		{
 			if (SelectedParent == nullptr)
 			{
-				SelectedParent = Node;
+				SelectedParent = bIsDuplicating ? Node->GetParentNode() : Node;
 			}
 			else
 			{
 				bHasMultipleNodesSelected = true;
-
 				break;
 			}
 		}
@@ -710,9 +719,7 @@ void SFlowGraphEditor::PasteNodesHere(const FVector2D& Location)
 	{
 		UEdGraphNode* PasteNode = *It;
 		UFlowGraphNode* PasteFlowGraphNode = Cast<UFlowGraphNode>(PasteNode);
-
-		EdNodeCopyIndexMap.Add(PasteFlowGraphNode->CopySubNodeIndex, PasteFlowGraphNode);
-
+		
 		if (PasteNode && (PasteFlowGraphNode == nullptr || !PasteFlowGraphNode->IsSubNode()))
 		{
 			bPastedParentNode = true;
@@ -728,21 +735,28 @@ void SFlowGraphEditor::PasteNodesHere(const FVector2D& Location)
 
 			// Give new node a different Guid from the old one
 			PasteNode->CreateNewGuid();
+			
 
-			if (UFlowNode* FlowNode = Cast<UFlowNode>(PasteFlowGraphNode->GetFlowNodeBase()))
+			if (PasteFlowGraphNode)
 			{
-				// Only full FlowNodes are registered with the Asset
-				// (for now?  perhaps we register AddOns in the future?)
-				FlowAsset->RegisterNode(PasteNode->NodeGuid, FlowNode);
+
+				if (UFlowNode* FlowNode = Cast<UFlowNode>(PasteFlowGraphNode->GetFlowNodeBase()))
+				{
+					// Only full FlowNodes are registered with the Asset
+					// (for now?  perhaps we register AddOns in the future?)
+					FlowAsset->RegisterNode(PasteNode->NodeGuid, FlowNode);
+				}
 			}
 		}
 
-		if (PasteFlowGraphNode)
+		if (PasteFlowGraphNode && PasteFlowGraphNode->SubNodes.Num())
 		{
 			PasteFlowGraphNode->RemoveAllSubNodes();
+			EdNodeCopyIndexMap.Add(PasteFlowGraphNode->CopySubNodeIndex, PasteFlowGraphNode);
 		}
 	}
 
+	bool bFailToPasteNode = false;
 	for (TSet<UEdGraphNode*>::TIterator It(PastedNodes); It; ++It)
 	{
 		UFlowGraphNode* PasteNode = Cast<UFlowGraphNode>(*It);
@@ -754,19 +768,33 @@ void SFlowGraphEditor::PasteNodesHere(const FVector2D& Location)
 			// remove subnode from graph, it will be referenced from parent node
 			PasteNode->DestroyNode();
 
-			if (PasteNode->CopySubNodeParentIndex == INDEX_NONE)
-			{
-				// INDEX_NONE parent index indicates we should set the parent to the SelectedParent
-				
-				if (SelectedParent)
-				{
-					SelectedParent->AddSubNode(PasteNode, FlowGraph);
-				}
-			}
-			else if (UFlowGraphNode* PastedParentNode = EdNodeCopyIndexMap.FindRef(PasteNode->CopySubNodeParentIndex))
+			UFlowGraphNode* PastedParentNode = EdNodeCopyIndexMap.FindRef(PasteNode->CopySubNodeParentIndex);
+			if (PastedParentNode && PastedParentNode->CanAcceptSubNodeAsChild( *PasteNode ))
 			{
 				PastedParentNode->AddSubNode(PasteNode, FlowGraph);
 			}
+			else if (!bHasMultipleNodesSelected && !bPastedParentNode && SelectedParent && SelectedParent->CanAcceptSubNodeAsChild( *PasteNode ))
+			{
+				SelectedParent->AddSubNode(PasteNode, FlowGraph);
+			}
+			else
+			{
+				bFailToPasteNode = true;
+			}
+		}
+	}
+
+	if (bFailToPasteNode)
+	{
+		// Display a notification to inform the user that one or more nodes could not be pasted into the graph.
+		FNotificationInfo Info(LOCTEXT("SkippedNodesWarning", "One or more copied nodes could not be pasted into this graph!"));
+		Info.ExpireDuration = 3.0f;
+		Info.bUseLargeFont = false;
+		Info.Image = FCoreStyle::Get().GetBrush(TEXT("MessageLog.Warning"));
+		TSharedPtr<SNotificationItem> Notification = FSlateNotificationManager::Get().AddNotification(Info);
+		if (Notification.IsValid())
+		{
+			Notification->SetCompletionState(SNotificationItem::CS_None);
 		}
 	}
 
@@ -798,22 +826,15 @@ bool SFlowGraphEditor::CanPasteNodes() const
 	FString ClipboardContent;
 	FPlatformApplicationMisc::ClipboardPaste(ClipboardContent);
 
-	const bool bIsPastePossible = FEdGraphUtilities::CanImportNodesFromText(FlowAsset->GetGraph(), ClipboardContent);
-
-	if (!bIsPastePossible)
-	{
-		return false;
-	}
-
-	// TODO (gtaylor) Need to confirm the nodes are allowed to be pasted on the selected node(s)
-
-	return true;
+	return FEdGraphUtilities::CanImportNodesFromText(FlowAsset->GetGraph(), ClipboardContent);
 }
 
 void SFlowGraphEditor::DuplicateNodes()
 {
+	bIsDuplicating = true;
 	CopySelectedNodes();
 	PasteNodes();
+	bIsDuplicating = false;
 }
 
 bool SFlowGraphEditor::CanDuplicateNodes() const
