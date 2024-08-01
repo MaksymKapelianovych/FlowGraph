@@ -592,6 +592,17 @@ bool UFlowGraphNode::CanDuplicateNode() const
 	return Super::CanDuplicateNode();
 }
 
+bool UFlowGraphNode::CanPasteHere( const UEdGraph* TargetGraph ) const
+{
+	const UFlowGraph* FlowGraph = Cast<UFlowGraph>(TargetGraph);
+	if (FlowGraph == nullptr)
+	{
+		return false;
+	}
+	
+	return Super::CanPasteHere(TargetGraph) && FlowGraph->GetFlowAsset()->IsNodeOrAddOnClassAllowed(NodeInstanceClass.Get());
+}
+
 TSharedPtr<SGraphNode> UFlowGraphNode::CreateVisualWidget()
 {
 	return SNew(SFlowGraphNode, this);
