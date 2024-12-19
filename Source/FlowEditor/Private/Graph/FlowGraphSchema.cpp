@@ -571,58 +571,6 @@ const FPinConnectionResponse UFlowGraphSchema::CanMergeNodes(const UEdGraphNode*
 	}
 }
 
-UEdGraphNode* UFlowGraphSchema::CreateSubstituteNode( UEdGraphNode* Node, const UEdGraph* Graph,
-	FObjectInstancingGraph* InstanceGraph, TSet<FName>& InOutExtraNames ) const
-{
-	if (UFlowGraphNode_Start* StartNode = Cast<UFlowGraphNode_Start>(Node))
-	{
-		// Use the old object name, this is needed for correct resolving pin references
-		FName ObjName = StartNode->GetFName();
-		UObject* Found = FindObject<UObject>(StartNode->GetOuter(), *ObjName.ToString());
-		if(Found)
-		{
-			Found->Rename(NULL, NULL, REN_DontCreateRedirectors | ((IsAsyncLoading() || Found->HasAnyFlags(RF_NeedLoad | RF_NeedPostLoad | RF_NeedPostLoadSubobjects)) ? REN_ForceNoResetLoaders : RF_NoFlags));
-		}
-		
-		// Create a custom event node to replace the original event node imported from text
-		TSubclassOf<UEdGraphNode> GraphNodeClass = UFlowGraphSchema::GetAssignedGraphNodeClass(UFlowNode_CustomInput::StaticClass());
-		UFlowGraphNode* CustomInputNode = NewObject<UFlowGraphNode>(Node->GetOuter(), GraphNodeClass, ObjName, RF_Transactional, nullptr, true, InstanceGraph);
-
-		// link editor and runtime nodes together
-		UFlowNode* FlowNode = NewObject<UFlowNode>(StartNode->GetFlowGraph()->GetFlowAsset(), UFlowNode_CustomInput::StaticClass(), NAME_None, RF_Transactional);
-		FlowNode->SetGraphNode(CustomInputNode);
-		CustomInputNode->SetNodeTemplate(FlowNode);
-		
-		// Set grid position to match that of the target node
-		CustomInputNode->NodePosX = Node->NodePosX;
-		CustomInputNode->NodePosY = Node->NodePosY;
-		
-		// Reuse the same GUID as the replaced node
-		CustomInputNode->NodeGuid = Node->NodeGuid;
-		
-		// Copy the pins from the old node to the new one that's replacing it
-		CustomInputNode->Pins = Node->Pins;
-
-		// Clear out the pins from the old node so that links aren't broken later when it's destroyed
-		Node->Pins.Empty();
-		
-		// Fixup pins
-		for(int32 PinIndex = 0; PinIndex < CustomInputNode->Pins.Num(); ++PinIndex)
-		{
-			UEdGraphPin* Pin = CustomInputNode->Pins[PinIndex];
-			check(Pin);
-			check(Pin->Direction == EGPD_Output);
-		
-			// Reparent the pin to the new custom event node
-			Pin->SetOwningNode(CustomInputNode);
-		}
-
-		return CustomInputNode;
-	}
-	
-	return Super::CreateSubstituteNode( Node, Graph, InstanceGraph, InOutExtraNames );
-}
-
 bool UFlowGraphSchema::TryCreateConnection(UEdGraphPin* PinA, UEdGraphPin* PinB) const
 {
 	const bool bModified = UEdGraphSchema::TryCreateConnection(PinA, PinB);

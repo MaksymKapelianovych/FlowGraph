@@ -45,7 +45,9 @@ UFlowGraphNode::UFlowGraphNode(const FObjectInitializer& ObjectInitializer)
 
 void UFlowGraphNode::SetNodeTemplate(UFlowNodeBase* InFlowNode)
 {
+	ensure(InFlowNode);
 	NodeInstance = InFlowNode;
+	NodeInstanceClass = InFlowNode->GetClass();
 }
 
 const UFlowNodeBase* UFlowGraphNode::GetNodeTemplate() const
