@@ -17,8 +17,8 @@ UFlowNode_CallOwnerFunction::UFlowNode_CallOwnerFunction(const FObjectInitialize
 	, Params(nullptr)
 {
 #if WITH_EDITOR
-	NodeStyle = EFlowNodeStyle::Default;
-	Category = TEXT("World");
+	NodeDisplayStyle = FlowNodeStyle::Deprecated;
+	Category = TEXT("Deprecated");
 #endif // WITH_EDITOR
 }
 

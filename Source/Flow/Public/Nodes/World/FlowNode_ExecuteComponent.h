@@ -6,6 +6,7 @@
 
 #include "Nodes/FlowNode.h"
 #include "Types/FlowInjectComponentsHelper.h"
+#include "Types/FlowEnumUtils.h"
 
 #include "FlowNode_ExecuteComponent.generated.h"
 
@@ -23,14 +24,17 @@ enum class EExecuteComponentSource : uint8
 	InjectFromClass,
 
 	Max UMETA(Hidden),
+	Invalid UMETA(Hidden),
+	Min = 0,
 
 	UsesInjectManagerFirst = InjectFromTemplate UMETA(Hidden),
 	UsesInjectManagerLast = InjectFromClass UMETA(Hidden),
 };
+FLOW_ENUM_RANGE_VALUES(EExecuteComponentSource)
 
 namespace EExecuteComponentSource_Classifiers
 {
-	FORCEINLINE bool DoesComponentSourceUseInjectManager(EExecuteComponentSource Source) { return Source >= EExecuteComponentSource::UsesInjectManagerFirst && Source <= EExecuteComponentSource::UsesInjectManagerLast; }
+	FORCEINLINE bool DoesComponentSourceUseInjectManager(EExecuteComponentSource Source) { return FLOW_IS_ENUM_IN_SUBRANGE(Source, EExecuteComponentSource::UsesInjectManager); }
 }
 
 /**
@@ -92,15 +96,15 @@ protected:
 
 	// Executable Component (by name) on the expected Flow owning Actor
 	//  (the component must implement the IFlowExecutableComponentInterface)
-	UPROPERTY(EditAnywhere, Category = "Flow Executable Component", meta = (DisplayName = "Component to Execute", MustImplement = "FlowCoreExecutableInterface,FlowExternalExecutableInterface", EditConditionHides, EditCondition = "ComponentSource == EExecuteComponentSource::BindToExisting || ComponentSource == EExecuteComponentSource::Undetermined"))
+	UPROPERTY(EditAnywhere, Category = "Flow Executable Component", meta = (DisplayName = "Component to Execute", MustImplement = "/Script/Flow.FlowCoreExecutableInterface,/Script/Flow.FlowExternalExecutableInterface", EditConditionHides, EditCondition = "ComponentSource == EExecuteComponentSource::BindToExisting || ComponentSource == EExecuteComponentSource::Undetermined"))
 	FFlowActorOwnerComponentRef ComponentRef;
 
 	// Component (template) to inject on the spawned actor, may be configured inline
-	UPROPERTY(EditAnywhere, Instanced, Category = Configuration, DisplayName = "Inject & Execute Component (from Template)", meta = (MustImplement = "FlowCoreExecutableInterface,FlowExternalExecutableInterface", EditConditionHides, EditCondition = "ComponentSource == EExecuteComponentSource::InjectFromTemplate || ComponentSource == EExecuteComponentSource::Undetermined"))
+	UPROPERTY(EditAnywhere, Instanced, Category = Configuration, DisplayName = "Inject & Execute Component (from Template)", meta = (MustImplement = "/Script/Flow.FlowCoreExecutableInterface,/Script/Flow.FlowExternalExecutableInterface", EditConditionHides, EditCondition = "ComponentSource == EExecuteComponentSource::InjectFromTemplate || ComponentSource == EExecuteComponentSource::Undetermined"))
 	TObjectPtr<UActorComponent> ComponentTemplate = nullptr;
 
 	// Component (class) to inject on the spawned actor
-	UPROPERTY(EditAnywhere, Category = Configuration, DisplayName = "Inject & Execute Component (by Class)", meta = (MustImplement = "FlowCoreExecutableInterface,FlowExternalExecutableInterface", EditConditionHides, EditCondition = "ComponentSource == EExecuteComponentSource::InjectFromClass || ComponentSource == EExecuteComponentSource::Undetermined"))
+	UPROPERTY(EditAnywhere, Category = Configuration, DisplayName = "Inject & Execute Component (by Class)", meta = (MustImplement = "/Script/Flow.FlowCoreExecutableInterface,/Script/Flow.FlowExternalExecutableInterface", EditConditionHides, EditCondition = "ComponentSource == EExecuteComponentSource::InjectFromClass || ComponentSource == EExecuteComponentSource::Undetermined"))
 	TSubclassOf<UActorComponent> ComponentClass = nullptr;
 
 	// Manager object to inject and remove components from the Flow owning Actor

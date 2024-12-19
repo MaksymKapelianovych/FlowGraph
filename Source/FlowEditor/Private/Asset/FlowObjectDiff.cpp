@@ -1,4 +1,4 @@
-﻿// Copyright https://github.com/MothCocoon/FlowGraph/graphs/contributors
+// Copyright https://github.com/MothCocoon/FlowGraph/graphs/contributors
 
 #include "Asset/FlowObjectDiff.h"
 
@@ -6,7 +6,7 @@
 #include "Nodes/FlowNodeBase.h"
 #include "EdGraph/EdGraph.h"
 
-#include "Graph\Nodes\FlowGraphNode.h"
+#include "Graph/Nodes/FlowGraphNode.h"
 #include "SBlueprintDiff.h"
 
 #include "DiffResults.h"

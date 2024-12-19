@@ -27,8 +27,10 @@ void FFlowGraphInterface::OnOutputTriggered(UEdGraphNode* GraphNode, const int32
 
 UFlowGraph::UFlowGraph(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
+	, GraphVersion(0)
 {
 	bLockUpdates = false;
+	bIsLoadingGraph = false;
 
 	if (!UFlowAsset::GetFlowGraphInterface().IsValid())
 	{
@@ -69,28 +71,24 @@ void UFlowGraph::RefreshGraph()
 		const UFlowGraphSchema* FlowGraphSchema = CastChecked<UFlowGraphSchema>(GetSchema());
 		FlowGraphSchema->GatherNodes();
 
-		const TMap<FGuid, UFlowNode*>& FlowAssetNodesMap = GetFlowAsset()->GetNodes();
-		for (const TPair<FGuid, UFlowNode*>& Node : FlowAssetNodesMap)
+		for (const TPair<FGuid, UFlowNode*>& Node : GetFlowAsset()->GetNodes())
 		{
 			UFlowNode* FlowNode = Node.Value;
-			if (!IsValid(FlowNode))
+			if (IsValid(FlowNode))
 			{
-				continue;
+				UFlowGraphNode* const ExistingFlowGraphNode = Cast<UFlowGraphNode>(FlowNode->GetGraphNode());
+				UFlowGraphNode* RefreshedFlowGraphNode = ExistingFlowGraphNode;
+
+				const TSubclassOf<UEdGraphNode> ExpectGraphNodeClass = UFlowGraphSchema::GetAssignedGraphNodeClass(FlowNode->GetClass());
+				const UClass* ExistingFlowGraphNodeClass = IsValid(ExistingFlowGraphNode) ? ExistingFlowGraphNode->GetClass() : nullptr;
+				if (ExistingFlowGraphNodeClass != ExpectGraphNodeClass)
+				{
+					// Create a new Flow Graph Node of proper type
+					RefreshedFlowGraphNode = FFlowGraphSchemaAction_NewNode::RecreateNode(this, ExistingFlowGraphNode, FlowNode);
+				}
+
+				RecursivelyRefreshAddOns(*RefreshedFlowGraphNode);
 			}
-
-			UFlowGraphNode* const ExistingFlowGraphNode = Cast<UFlowGraphNode>(FlowNode->GetGraphNode());
-
-			UFlowGraphNode* RefreshedFlowGraphNode = ExistingFlowGraphNode;
-
-			const TSubclassOf<UEdGraphNode> ExpectGraphNodeClass = UFlowGraphSchema::GetAssignedGraphNodeClass(FlowNode->GetClass());
-			UClass* ExistingFlowGraphNodeClass = IsValid(ExistingFlowGraphNode) ? ExistingFlowGraphNode->GetClass() : nullptr;
-			if (ExistingFlowGraphNodeClass != ExpectGraphNodeClass)
-			{
-				// Create a new Flow Graph Node of proper type
-				RefreshedFlowGraphNode = FFlowGraphSchemaAction_NewNode::RecreateNode(this, ExistingFlowGraphNode, FlowNode);
-			}
-
-			RecursivelyRefreshAddOns(*RefreshedFlowGraphNode);
 		}
 
 		UnlockUpdates();
@@ -105,22 +103,10 @@ void UFlowGraph::RefreshGraph()
 	}
 }
 
-void UFlowGraph::NotifyGraphChanged()
-{
-	GetFlowAsset()->HarvestNodeConnections();
-
-	Super::NotifyGraphChanged();
-}
-
-UFlowAsset* UFlowGraph::GetFlowAsset() const
-{
-	return GetTypedOuter<UFlowAsset>();
-}
-
 void UFlowGraph::RecursivelyRefreshAddOns(UFlowGraphNode& FromFlowGraphNode)
 {
 	// Refresh AddOns
-	UFlowNodeBase* FromFlowNodeBase = FromFlowGraphNode.GetFlowNodeBase();
+	const UFlowNodeBase* FromFlowNodeBase = FromFlowGraphNode.GetFlowNodeBase();
 
 	const TArray<UFlowNodeAddOn*> FlowNodeAddOnChildren = FromFlowNodeBase->GetFlowNodeAddOnChildren();
 	for (UFlowNodeAddOn* AddOn : FlowNodeAddOnChildren)
@@ -133,8 +119,8 @@ void UFlowGraph::RecursivelyRefreshAddOns(UFlowGraphNode& FromFlowGraphNode)
 				TEXT("Missing AddOn detected for node %s (parent %s)"),
 				*FromFlowNodeBase->GetName(),
 				FromFlowGraphNode.GetParentNode() ?
-					*FromFlowGraphNode.GetParentNode()->GetName() :
-					TEXT("<null>"));
+				*FromFlowGraphNode.GetParentNode()->GetName() :
+				TEXT("<null>"));
 
 			continue;
 		}
@@ -143,7 +129,7 @@ void UFlowGraph::RecursivelyRefreshAddOns(UFlowGraphNode& FromFlowGraphNode)
 
 		const TSubclassOf<UEdGraphNode> ExpectAddOnGraphNodeClass = UFlowGraphSchema::GetAssignedGraphNodeClass(AddOn->GetClass());
 		UFlowGraphNode* RefreshedAddOnFlowGraphNode = AddOnFlowGraphNode;
-		UClass* ExistingAddOnGraphNodeClass = IsValid(AddOnFlowGraphNode) ? AddOnFlowGraphNode->GetClass() : nullptr;
+		const UClass* ExistingAddOnGraphNodeClass = IsValid(AddOnFlowGraphNode) ? AddOnFlowGraphNode->GetClass() : nullptr;
 
 		if (ExistingAddOnGraphNodeClass != ExpectAddOnGraphNodeClass)
 		{
@@ -156,45 +142,46 @@ void UFlowGraph::RecursivelyRefreshAddOns(UFlowGraphNode& FromFlowGraphNode)
 	}
 }
 
-void UFlowGraph::RecursivelySetupAllFlowGraphNodesForEditing(UFlowGraphNode& FromFlowGraphNode)
+void UFlowGraph::NotifyGraphChanged()
 {
-	UFlowNodeBase* FromNodeInstance = FromFlowGraphNode.GetFlowNodeBase();
-	if (IsValid(FromNodeInstance))
+	if (UFlowAsset* FlowAsset = GetFlowAsset())
 	{
-		// Setup all of the flow node (and subnode) instances for editing
-		FromNodeInstance->SetupForEditing(FromFlowGraphNode);
+		FlowAsset->HarvestNodeConnections();
 	}
 
-	for (UFlowGraphNode* SubNode : FromFlowGraphNode.SubNodes)
-	{
-		// Setup all of the flow subnodes for editing
-		if (IsValid(SubNode))
-		{
-			SubNode->SetParentNodeForSubNode(&FromFlowGraphNode);
+	Super::NotifyGraphChanged();
+}
 
-			RecursivelySetupAllFlowGraphNodesForEditing(*SubNode);
+UFlowAsset* UFlowGraph::GetFlowAsset() const
+{
+	return GetTypedOuter<UFlowAsset>();
+}
+
+void UFlowGraph::ValidateAsset(FFlowMessageLog& MessageLog)
+{
+	if (UFlowAsset* FlowAsset = GetFlowAsset())
+	{
+		FlowAsset->ValidateAsset(MessageLog);
+	}
+
+	for (UEdGraphNode* Node : Nodes)
+	{
+		if (const UFlowGraphNode* FlowGraphNode = Cast<UFlowGraphNode>(Node))
+		{
+			FlowGraphNode->ValidateGraphNode(MessageLog);
 		}
 	}
 }
 
-void UFlowGraph::UpdateAsset(int32 UpdateFlags)
+void UFlowGraph::Serialize(FArchive& Ar)
 {
-	if (IsLocked())
-	{
-		return;
-	}
+	// Overridden to flags up errors in the behavior tree while cooking.
+	Super::Serialize(Ar);
 
-	// UpdateAsset is called to do any reconciliation from the editor-version of the 
-	//  graph to the runtime version of the graph data.
-	// In our case, it will copy the AddOns from their editor-side UFlowGraphNode containers to
-	//  their runtime UFlowNode and/or UFlowNodeAddOn ::AddOn array entry (via OnUpdateAsset)
-	for (UEdGraphNode* EdNode : Nodes)
+	if (Ar.IsSaving() || Ar.IsCooking())
 	{
-		UFlowGraphNode* FlowGraphNode = Cast<UFlowGraphNode>(EdNode);
-		if (FlowGraphNode)
-		{
-			FlowGraphNode->OnUpdateAsset(UpdateFlags);
-		}
+		// Logging of errors happens in UpdateDeprecatedClasses
+		UpdateDeprecatedClasses();
 	}
 }
 
@@ -207,10 +194,12 @@ void UFlowGraph::OnLoaded()
 {
 	check(GEditor);
 
+	bIsLoadingGraph = true;
+
 	// Setup all the Nodes in the graph for editing
-	for (UEdGraphNode* EdNode : Nodes)
+	for (UEdGraphNode* Node : Nodes)
 	{
-		UFlowGraphNode* FlowGraphNode = Cast<UFlowGraphNode>(EdNode);
+		UFlowGraphNode* FlowGraphNode = Cast<UFlowGraphNode>(Node);
 		if (IsValid(FlowGraphNode))
 		{
 			RecursivelySetupAllFlowGraphNodesForEditing(*FlowGraphNode);
@@ -225,6 +214,8 @@ void UFlowGraph::OnLoaded()
 	}
 
 	RefreshGraph();
+
+	bIsLoadingGraph = false;
 }
 
 void UFlowGraph::OnSave()
@@ -255,24 +246,60 @@ void UFlowGraph::MarkVersion()
 	GraphVersion = 1;
 }
 
+void UFlowGraph::UpdateClassData()
+{
+	for (UEdGraphNode* Node : Nodes)
+	{
+		if (UFlowGraphNode* FlowGraphNode = Cast<UFlowGraphNode>(Node))
+		{
+			FlowGraphNode->UpdateNodeClassData();
+
+			for (UFlowGraphNode* SubNode : FlowGraphNode->SubNodes)
+			{
+				if (SubNode)
+				{
+					SubNode->UpdateNodeClassData();
+				}
+			}
+		}
+	}
+}
+
+void UFlowGraph::UpdateAsset(const int32 UpdateFlags)
+{
+	if (IsLocked())
+	{
+		return;
+	}
+
+	// UpdateAsset is called to do any reconciliation from the editor-version of the 
+	//  graph to the runtime version of the graph data.
+	// In our case, it will copy the AddOns from their editor-side UFlowGraphNode containers to
+	//  their runtime UFlowNode and/or UFlowNodeAddOn ::AddOn array entry (via OnUpdateAsset)
+	for (UEdGraphNode* Node : Nodes)
+	{
+		if (UFlowGraphNode* FlowGraphNode = Cast<UFlowGraphNode>(Node))
+		{
+			FlowGraphNode->OnUpdateAsset(UpdateFlags);
+		}
+	}
+}
+
 bool UFlowGraph::UpdateUnknownNodeClasses()
 {
 	bool bUpdated = false;
-	for (int32 NodeIdx = 0; NodeIdx < Nodes.Num(); NodeIdx++)
+
+	for (UEdGraphNode* Node : Nodes)
 	{
-		UFlowGraphNode* MyNode = Cast<UFlowGraphNode>(Nodes[NodeIdx]);
-		if (MyNode)
+		if (UFlowGraphNode* FlowGraphNode = Cast<UFlowGraphNode>(Node))
 		{
-			const bool bUpdatedNode = MyNode->RefreshNodeClass();
+			const bool bUpdatedNode = FlowGraphNode->RefreshNodeClass();
 			bUpdated = bUpdated || bUpdatedNode;
 
-			for (int32 SubNodeIdx = 0; SubNodeIdx < MyNode->SubNodes.Num(); SubNodeIdx++)
+			for (UFlowGraphNode* SubNode : FlowGraphNode->SubNodes)
 			{
-				if (MyNode->SubNodes[SubNodeIdx])
-				{
-					const bool bUpdatedSubNode = MyNode->SubNodes[SubNodeIdx]->RefreshNodeClass();
-					bUpdated = bUpdated || bUpdatedSubNode;
-				}
+				const bool bUpdatedSubNode = SubNode->RefreshNodeClass();
+				bUpdated = bUpdated || bUpdatedSubNode;
 			}
 		}
 	}
@@ -280,21 +307,25 @@ bool UFlowGraph::UpdateUnknownNodeClasses()
 	return bUpdated;
 }
 
-FString UFlowGraph::GetDeprecationMessage(const UClass* Class)
+void UFlowGraph::UpdateDeprecatedClasses()
 {
-	static FName MetaDeprecated = TEXT("DeprecatedNode");
-	static FName MetaDeprecatedMessage = TEXT("DeprecationMessage");
-	FString DefDeprecatedMessage("Please remove it!");
-	FString DeprecatedPrefix("DEPRECATED");
-	FString DeprecatedMessage;
+	// This function sets error messages and logs errors about nodes.
 
-	if (Class && Class->HasAnyClassFlags(CLASS_Native) && Class->HasMetaData(MetaDeprecated))
+	for (UEdGraphNode* Node : Nodes)
 	{
-		DeprecatedMessage = DeprecatedPrefix + TEXT(": ");
-		DeprecatedMessage += Class->HasMetaData(MetaDeprecatedMessage) ? Class->GetMetaData(MetaDeprecatedMessage) : DefDeprecatedMessage;
-	}
+		if (UFlowGraphNode* FlowGraphNode = Cast<UFlowGraphNode>(Node))
+		{
+			UpdateFlowGraphNodeErrorMessage(*FlowGraphNode);
 
-	return DeprecatedMessage;
+			for (UFlowGraphNode* SubNode : FlowGraphNode->SubNodes)
+			{
+				if (SubNode)
+				{
+					UpdateFlowGraphNodeErrorMessage(*SubNode);
+				}
+			}
+		}
+	}
 }
 
 void UFlowGraph::UpdateFlowGraphNodeErrorMessage(UFlowGraphNode& Node)
@@ -324,74 +355,65 @@ void UFlowGraph::UpdateFlowGraphNodeErrorMessage(UFlowGraphNode& Node)
 	}
 }
 
-void UFlowGraph::UpdateDeprecatedClasses()
+FString UFlowGraph::GetDeprecationMessage(const UClass* Class)
 {
-	// This function sets error messages and logs errors about nodes.
+	static FName MetaDeprecated = TEXT("DeprecatedNode");
+	static FName MetaDeprecatedMessage = TEXT("DeprecationMessage");
+	const FString DefDeprecatedMessage("Please remove it!");
+	const FString DeprecatedPrefix("DEPRECATED");
+	FString DeprecatedMessage;
 
-	for (int32 Idx = 0, IdxNum = Nodes.Num(); Idx < IdxNum; ++Idx)
+	if (Class && Class->HasAnyClassFlags(CLASS_Native) && Class->HasMetaData(MetaDeprecated))
 	{
-		UFlowGraphNode* Node = Cast<UFlowGraphNode>(Nodes[Idx]);
-		if (Node != nullptr)
-		{
-			UpdateFlowGraphNodeErrorMessage(*Node);
-			
-			for (int32 SubIdx = 0, SubIdxNum = Node->SubNodes.Num(); SubIdx < SubIdxNum; ++SubIdx)
-			{
-				if (Node->SubNodes[SubIdx] != nullptr)
-				{
-					UpdateFlowGraphNodeErrorMessage(*Node->SubNodes[SubIdx]);
-				}
-			}
-		}
+		DeprecatedMessage = DeprecatedPrefix + TEXT(": ");
+		DeprecatedMessage += Class->HasMetaData(MetaDeprecatedMessage) ? Class->GetMetaData(MetaDeprecatedMessage) : DefDeprecatedMessage;
 	}
+
+	return DeprecatedMessage;
 }
 
-void UFlowGraph::Serialize(FArchive& Ar)
+void UFlowGraph::OnSubNodeDropped()
 {
-	// Overridden to flags up errors in the behavior tree while cooking.
-	Super::Serialize(Ar);
-
-	if (Ar.IsSaving() || Ar.IsCooking())
-	{
-		// Logging of errors happens in UpdateDeprecatedClasses
-		UpdateDeprecatedClasses();
-	}
+	NotifyGraphChanged();
 }
 
-void UFlowGraph::UpdateClassData()
+void UFlowGraph::RemoveOrphanedNodes()
 {
-	for (int32 Idx = 0; Idx < Nodes.Num(); Idx++)
-	{
-		UFlowGraphNode* Node = Cast<UFlowGraphNode>(Nodes[Idx]);
-		if (Node)
-		{
-			Node->UpdateNodeClassData();
+	TSet<UObject*> NodeInstances;
+	CollectAllNodeInstances(NodeInstances);
 
-			for (int32 SubIdx = 0; SubIdx < Node->SubNodes.Num(); SubIdx++)
-			{
-				if (UFlowGraphNode* SubNode = Node->SubNodes[SubIdx])
-				{
-					SubNode->UpdateNodeClassData();
-				}
-			}
+	NodeInstances.Remove(nullptr);
+
+	// Obtain a list of all nodes actually in the asset and discard unused nodes
+	TArray<UObject*> AllInners;
+	constexpr bool bIncludeNestedObjects = false;
+	GetObjectsWithOuter(GetOuter(), AllInners, bIncludeNestedObjects);
+	for (auto InnerIt = AllInners.CreateConstIterator(); InnerIt; ++InnerIt)
+	{
+		UObject* TestObject = *InnerIt;
+		if (!NodeInstances.Contains(TestObject) && CanRemoveNestedObject(TestObject))
+		{
+			OnNodeInstanceRemoved(TestObject);
+
+			TestObject->SetFlags(RF_Transient);
+			TestObject->Rename(nullptr, GetTransientPackage(), REN_DontCreateRedirectors | REN_NonTransactional | REN_ForceNoResetLoaders);
 		}
 	}
 }
 
 void UFlowGraph::CollectAllNodeInstances(TSet<UObject*>& NodeInstances)
 {
-	for (int32 Idx = 0; Idx < Nodes.Num(); Idx++)
+	for (UObject* NodeInstance : NodeInstances)
 	{
-		UFlowGraphNode* MyNode = Cast<UFlowGraphNode>(Nodes[Idx]);
-		if (MyNode)
+		if (UFlowGraphNode* FlowGraphNode = Cast<UFlowGraphNode>(NodeInstance))
 		{
-			NodeInstances.Add(MyNode->GetFlowNodeBase());
+			NodeInstances.Add(FlowGraphNode->GetFlowNodeBase());
 
-			for (int32 SubIdx = 0; SubIdx < MyNode->SubNodes.Num(); SubIdx++)
+			for (const UFlowGraphNode* SubNode : FlowGraphNode->SubNodes)
 			{
-				if (MyNode->SubNodes[SubIdx])
+				if (SubNode)
 				{
-					NodeInstances.Add(MyNode->SubNodes[SubIdx]->GetFlowNodeBase());
+					NodeInstances.Add(SubNode->GetFlowNodeBase());
 				}
 			}
 		}
@@ -405,46 +427,12 @@ bool UFlowGraph::CanRemoveNestedObject(UObject* TestObject) const
 		!TestObject->IsA(UEdGraphSchema::StaticClass());
 }
 
-void UFlowGraph::RemoveOrphanedNodes()
-{
-	TSet<UObject*> NodeInstances;
-	CollectAllNodeInstances(NodeInstances);
-
-	NodeInstances.Remove(nullptr);
-
-	// Obtain a list of all nodes actually in the asset and discard unused nodes
-	TArray<UObject*> AllInners;
-	const bool bIncludeNestedObjects = false;
-	GetObjectsWithOuter(GetOuter(), AllInners, bIncludeNestedObjects);
-	for (auto InnerIt = AllInners.CreateConstIterator(); InnerIt; ++InnerIt)
-	{
-		UObject* TestObject = *InnerIt;
-		if (!NodeInstances.Contains(TestObject) && CanRemoveNestedObject(TestObject))
-		{
-			OnNodeInstanceRemoved(TestObject);
-
-			TestObject->SetFlags(RF_Transient);
-			TestObject->Rename(NULL, GetTransientPackage(), REN_DontCreateRedirectors | REN_NonTransactional | REN_ForceNoResetLoaders);
-		}
-	}
-}
-
-void UFlowGraph::OnNodeInstanceRemoved(UObject* NodeInstance)
-{
-	// empty in base class
-}
-
-void UFlowGraph::OnNodesPasted(const FString& ImportStr)
-{
-	// empty in base class
-}
-
-UEdGraphPin* UFlowGraph::FindGraphNodePin(UEdGraphNode* Node, EEdGraphPinDirection Dir)
+UEdGraphPin* UFlowGraph::FindGraphNodePin(UEdGraphNode* Node, const EEdGraphPinDirection Direction)
 {
 	UEdGraphPin* Pin = nullptr;
 	for (int32 Idx = 0; Idx < Node->Pins.Num(); Idx++)
 	{
-		if (Node->Pins[Idx]->Direction == Dir)
+		if (Node->Pins[Idx]->Direction == Direction)
 		{
 			Pin = Node->Pins[Idx];
 			break;
@@ -470,7 +458,32 @@ void UFlowGraph::UnlockUpdates()
 	UpdateAsset();
 }
 
-void UFlowGraph::OnSubNodeDropped()
+void UFlowGraph::RecursivelySetupAllFlowGraphNodesForEditing(UFlowGraphNode& FromFlowGraphNode)
 {
-	NotifyGraphChanged();
+	UFlowNodeBase* FromNodeInstance = FromFlowGraphNode.GetFlowNodeBase();
+	if (IsValid(FromNodeInstance))
+	{
+		// Setup all the flow node (and SubNode) instances for editing
+		FromNodeInstance->SetupForEditing(FromFlowGraphNode);
+	}
+	else
+	{
+		// Reconstruct the node if the NodeInstance is missing
+		FromFlowGraphNode.ReconstructNode();
+	}
+
+	for (UFlowGraphNode* SubNode : FromFlowGraphNode.SubNodes)
+	{
+		// Setup all the flow SubNodes for editing
+		if (IsValid(SubNode))
+		{
+			SubNode->SetParentNodeForSubNode(&FromFlowGraphNode);
+
+			RecursivelySetupAllFlowGraphNodesForEditing(*SubNode);
+		}
+	}
 }
+
+
+
+
