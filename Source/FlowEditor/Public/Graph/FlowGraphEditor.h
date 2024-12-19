@@ -2,10 +2,7 @@
 
 #pragma once
 
-#include "EdGraphUtilities.h"
 #include "GraphEditor.h"
-#include "GraphEditorActions.h"
-#include "SGraphNode.h"
 #include "Widgets/DeclarativeSyntaxSupport.h"
 
 #include "FlowGraph.h"
@@ -74,13 +71,17 @@ protected:
 	virtual bool CanDeleteNodes() const;
 
 	virtual void CopySelectedNodes() const;
-	void PrepareFlowGraphNodeForCopy(UFlowGraphNode& FlowGraphNode, int32 ParentEdNodeIndex, FGraphPanelSelectionSet& NewSelectedNodes) const;
+	static void PrepareFlowGraphNodeForCopy(UFlowGraphNode& FlowGraphNode, const int32 ParentEdNodeIndex, FGraphPanelSelectionSet& NewSelectedNodes);
 	virtual bool CanCopyNodes() const;
 
 	virtual void CutSelectedNodes();
 	virtual bool CanCutNodes() const;
 
 	virtual void PasteNodes();
+
+	static bool CanPasteNodesAsSubNodes(const TSet<UEdGraphNode*>& NodesToPaste, const UFlowGraphNode& PasteTargetNode);
+	static TSet<UEdGraphNode*> ImportNodesToPasteFromClipboard(UFlowGraph& FlowGraph, FString& OutTextToImport);
+	TArray<UFlowGraphNode*> DerivePasteTargetNodesFromSelectedNodes() const;
 
 public:
 	virtual void PasteNodesHere(const FVector2D& Location);

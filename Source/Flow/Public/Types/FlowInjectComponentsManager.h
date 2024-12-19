@@ -6,7 +6,6 @@
 
 #include "FlowInjectComponentsManager.generated.h"
 
-class AActor;
 class UActorComponent;
 class UFlowNodeBase;
 
@@ -64,5 +63,5 @@ public:
 
 	// Map of spawned components (if we are cleaning up)
 	UPROPERTY(Transient)
-	TMap<AActor*, FFlowComponentInstances> ActorToComponentsMap;
+	TMap<TObjectPtr<AActor>, FFlowComponentInstances> ActorToComponentsMap;
 };

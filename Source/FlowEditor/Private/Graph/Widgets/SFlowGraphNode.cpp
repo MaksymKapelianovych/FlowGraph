@@ -735,35 +735,6 @@ TSharedPtr<SWidget> SFlowGraphNode::GetEnabledStateWidget() const
 	return TSharedPtr<SWidget>();
 }
 
-void SFlowGraphNode::CreateStandardPinWidget(UEdGraphPin* Pin)
-{
-	const TSharedPtr<SGraphPin> NewPin = SNew(SFlowGraphPinExec, Pin);
-
-	UFlowNode* FlowNode = Cast<UFlowNode>(FlowGraphNode->GetFlowNodeBase());
-
-	if (!UFlowGraphSettings::Get()->bShowDefaultPinNames && IsValid(FlowNode))
-	{
-		if (Pin->Direction == EGPD_Input)
-		{
-			// Pin array can have pins with name None, which will not be created. We need to check if array have only one valid pin
-			if (ValidPinsCount(FlowNode->GetInputPins()) == 1 && Pin->PinName == UFlowNode::DefaultInputPin.PinName)
-			{
-				NewPin->SetShowLabel(false);
-			}
-		}
-		else
-		{
-			// Pin array can have pins with name None, which will not be created. We need to check if array have only one valid pin
-			if (ValidPinsCount(FlowNode->GetOutputPins()) == 1 && Pin->PinName == UFlowNode::DefaultOutputPin.PinName)
-			{
-				NewPin->SetShowLabel(false);
-			}
-		}
-	}
-
-	this->AddPin(NewPin.ToSharedRef());
-}
-
 END_SLATE_FUNCTION_BUILD_OPTIMIZATION
 
 TSharedPtr<SToolTip> SFlowGraphNode::GetComplexTooltip()
@@ -924,9 +895,10 @@ void SFlowGraphNode::AddPin(const TSharedRef<SGraphPin>& PinToAdd)
 	if (PinToAdd->GetDirection() == EEdGraphPinDirection::EGPD_Input)
 	{
 		LeftNodeBox->AddSlot()
-			.HAlign(HAlign_Fill)
-			.VAlign(VAlign_Fill)
-			.FillHeight(1.0f)
+			.AutoHeight()
+			.HAlign(HAlign_Left)
+			.VAlign(VAlign_Center)
+			.Padding(Settings->GetInputPinPadding())
 			[
 				PinToAdd
 			];
@@ -935,9 +907,10 @@ void SFlowGraphNode::AddPin(const TSharedRef<SGraphPin>& PinToAdd)
 	else // Direction == EEdGraphPinDirection::EGPD_Output
 	{
 		RightNodeBox->AddSlot()
-			.HAlign(HAlign_Fill)
-			.VAlign(VAlign_Fill)
-			.FillHeight(1.0f)
+			.AutoHeight()
+			.HAlign(HAlign_Right)
+			.VAlign(VAlign_Center)
+			.Padding(Settings->GetOutputPinPadding())
 			[
 				PinToAdd
 			];
@@ -1115,7 +1088,7 @@ FReply SFlowGraphNode::OnDrop(const FGeometry& MyGeometry, const FDragDropEvent&
 			return FReply::Unhandled();
 		}
 
-		const FScopedTransaction Transaction(NSLOCTEXT("UnrealEd", "GraphEd_DragDropNode", "Drag&Drop Node"));
+		const FScopedTransaction Transaction(LOCTEXT("GraphEd_DragDropNode", "Drag&Drop Node"));
 
 		UFlowGraphNode* DropTargetNode = DragNodeOp->GetDropTargetNode();
 		check(DropTargetNode);
@@ -1174,17 +1147,23 @@ FReply SFlowGraphNode::OnDrop(const FGeometry& MyGeometry, const FDragDropEvent&
 
 bool SFlowGraphNode::ShouldDropDraggedNodesAsSubNodes(const TArray<TSharedRef<SGraphNode>>& DraggedNodes, UFlowGraphNode* DropTargetNode) const
 {
+	TSet<const UEdGraphNode*> DraggedFlowGraphNodes;
 	for (int32 Idx = 0; Idx < DraggedNodes.Num(); Idx++)
 	{
 		UFlowGraphNode* DraggedNode = Cast<UFlowGraphNode>(DraggedNodes[Idx]->GetNodeObj());
-		if (!DraggedNode)
+		if (IsValid(DraggedNode))
 		{
-			continue;
+			DraggedFlowGraphNodes.Add(DraggedNode);
 		}
+	}
+
+	for (TSet<const UEdGraphNode*>::TConstIterator It(DraggedFlowGraphNodes); It; ++It)
+	{
+		const UFlowGraphNode* DraggedNode = Cast<UFlowGraphNode>(*It);
 
 		// Check if all of the dragged nodes can be stopped as a subnode 
 		//  (if not ALL, then we cannot drop ANY of them)
-		const bool bCanDropDraggedNodeAsSubNode = DropTargetNode->CanAcceptSubNodeAsChild(*DraggedNode);
+		const bool bCanDropDraggedNodeAsSubNode = DropTargetNode->CanAcceptSubNodeAsChild(*DraggedNode, DraggedFlowGraphNodes);
 
 		if (!bCanDropDraggedNodeAsSubNode)
 		{
@@ -1234,20 +1213,6 @@ void SFlowGraphNode::SetOwner(const TSharedRef<SGraphPanel>& OwnerPanel)
 			OwnerPanel->AttachGraphEvents(ChildWidget);
 		}
 	}
-}
-
-int32 SFlowGraphNode::ValidPinsCount(const TArray<FFlowPin>& Pins)
-{
-	int32 Count = 0;
-	for (const FFlowPin& Pin : Pins)
-	{
-		if (Pin.IsValid())
-		{
-			Count += 1;
-		}
-	}
-
-	return Count;
 }
 
 #undef LOCTEXT_NAMESPACE

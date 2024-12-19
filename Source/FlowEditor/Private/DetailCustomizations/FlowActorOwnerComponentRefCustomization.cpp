@@ -2,10 +2,10 @@
 
 #include "DetailCustomizations/FlowActorOwnerComponentRefCustomization.h"
 
-#include "Nodes/FlowNode.h"
-#include "FlowAsset.h"
 #include "AddOns/FlowNodeAddOn.h"
+#include "FlowAsset.h"
 #include "FlowActorOwnerComponentFilters.h"
+#include "Nodes/FlowNode.h"
 
 #include "UObject/UnrealType.h"
 #include "GameFramework/Actor.h"
@@ -61,6 +61,7 @@ UClass* FFlowActorOwnerComponentRefCustomization::TryGetExpectedOwnerClass() con
 TArray<FName> FFlowActorOwnerComponentRefCustomization::GetFlowActorOwnerComponents(TSubclassOf<AActor> ExpectedActorOwnerClass) const
 {
 	TArray<const UActorComponent*> AllComponents;
+
 	AActor::GetActorClassDefaultComponents<UActorComponent>(ExpectedActorOwnerClass, AllComponents);
 
 	// Array for components that pass the metadata filter

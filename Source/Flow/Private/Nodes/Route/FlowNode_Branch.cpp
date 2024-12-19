@@ -14,7 +14,7 @@ UFlowNode_Branch::UFlowNode_Branch(const FObjectInitializer& ObjectInitializer)
 {
 #if WITH_EDITOR
 	Category = TEXT("Route");
-	NodeStyle = EFlowNodeStyle::Logic;
+	NodeDisplayStyle = FlowNodeStyle::Logic;
 #endif
 	InputPins.Empty();
 	InputPins.Add(FFlowPin(INPIN_Evaluate));
@@ -23,29 +23,21 @@ UFlowNode_Branch::UFlowNode_Branch(const FObjectInitializer& ObjectInitializer)
 	OutputPins.Add(FFlowPin(OUTPIN_True));
 	OutputPins.Add(FFlowPin(OUTPIN_False));
 
-	AllowedSignalModes = { EFlowSignalMode::Enabled, EFlowSignalMode::Disabled };
+	AllowedSignalModes = {EFlowSignalMode::Enabled, EFlowSignalMode::Disabled};
 }
 
-EFlowAddOnAcceptResult UFlowNode_Branch::AcceptFlowNodeAddOnChild_Implementation(const UFlowNodeAddOn* AddOnTemplate) const
+EFlowAddOnAcceptResult UFlowNode_Branch::AcceptFlowNodeAddOnChild_Implementation(const UFlowNodeAddOn* AddOnTemplate, const TArray<UFlowNodeAddOn*>& AdditionalAddOnsToAssumeAreChildren) const
 {
 	if (IFlowPredicateInterface::ImplementsInterfaceSafe(AddOnTemplate))
 	{
 		return EFlowAddOnAcceptResult::TentativeAccept;
 	}
 
-	return Super::AcceptFlowNodeAddOnChild_Implementation(AddOnTemplate);
+	return Super::AcceptFlowNodeAddOnChild_Implementation(AddOnTemplate, AdditionalAddOnsToAssumeAreChildren);
 }
 
 void UFlowNode_Branch::ExecuteInput(const FName& PinName)
 {
-	bool bResult = UFlowNodeAddOn_PredicateAND::EvaluatePredicateAND(AddOns);
-
-	if (bResult)
-	{
-		TriggerOutput(OUTPIN_True);
-	}
-	else
-	{
-		TriggerOutput(OUTPIN_False);
-	}
+	const bool bResult = UFlowNodeAddOn_PredicateAND::EvaluatePredicateAND(AddOns);
+	TriggerOutput(bResult ? OUTPIN_True : OUTPIN_False, true);
 }

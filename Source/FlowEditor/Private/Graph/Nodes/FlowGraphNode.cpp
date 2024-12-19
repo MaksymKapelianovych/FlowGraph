@@ -37,6 +37,7 @@ UFlowGraphNode::UFlowGraphNode(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 	, NodeInstance(nullptr)
 	, bBlueprintCompilationPending(false)
+	, bIsReconstructingNode(false)
 	, bNeedsFullReconstruction(false)
 {
 	OrphanedPinSaveMode = ESaveOrphanPinMode::SaveAll;
@@ -79,8 +80,6 @@ void UFlowGraphNode::PostLoad()
 		NodeInstance->FixNode(this); // fix already created nodes
 		SubscribeToExternalChanges();
 	}
-
-	ReconstructNode();
 }
 
 void UFlowGraphNode::PostDuplicate(bool bDuplicateForPIE)
@@ -159,7 +158,7 @@ void UFlowGraphNode::PostCopyNode()
 	// Make sure this NodeInstance is owned by the FlowAsset it's being pasted into
 	if (NodeInstance)
 	{
-		UFlowAsset* FlowAsset = CastChecked<UFlowGraph>(GetGraph())->GetFlowAsset();
+		UFlowAsset* FlowAsset = GetFlowAsset();
 
 		if (NodeInstance->GetOuter() != FlowAsset)
 		{
@@ -184,6 +183,11 @@ void UFlowGraphNode::SubscribeToExternalChanges()
 
 void UFlowGraphNode::OnExternalChange()
 {
+	if (bIsReconstructingNode)
+	{
+		return;
+	}
+
 	// Do not create transaction here, since this function triggers from modifying UFlowNode's property, which itself already made inside of transaction.
 	Modify();
 
@@ -276,6 +280,24 @@ void UFlowGraphNode::InsertNewNode(UEdGraphPin* FromPin, UEdGraphPin* NewLinkPin
 
 void UFlowGraphNode::ReconstructNode()
 {
+	if (const UFlowGraph* FlowGraph = GetFlowGraph())
+	{
+		// If the graph is locked, we shouldn't reconstruct nodes 
+		// (all nodes will all be reconstructed when the graph is unlocked)
+
+		if (FlowGraph->IsLocked())
+		{
+			return;
+		}
+	}
+
+	if (bIsReconstructingNode)
+	{
+		return;
+	}
+
+	bIsReconstructingNode = true;
+
 	// Store old pins
 	TArray<UEdGraphPin*> OldPins(Pins);
 
@@ -284,11 +306,19 @@ void UFlowGraphNode::ReconstructNode()
 	InputPins.Reset();
 	OutputPins.Reset();
 
-	// Recreate pins
-	if (SupportsContextPins() && (NodeInstance->CanRefreshContextPinsOnLoad() || bNeedsFullReconstruction))
+	// Harvest the auto-generated pins before refreshing context pins
+	if (UFlowNode* FlowNode = Cast<UFlowNode>(NodeInstance))
 	{
-		RefreshContextPins(false);
+		if (UFlowAsset* FlowAsset = NodeInstance->GetFlowAsset())
+		{
+			FlowAsset->TryUpdateManagedFlowPinsForNode(*FlowNode);
+		}
 	}
+
+	// Recreate pins
+	constexpr bool bReconstructNode = false;
+	RefreshContextPins(bReconstructNode);
+
 	AllocateDefaultPins();
 	RewireOldPinsToNewPins(OldPins);
 
@@ -304,6 +334,7 @@ void UFlowGraphNode::ReconstructNode()
 	UFlowDebuggerSubsystem::CleanupTraits(this);
 
 	bNeedsFullReconstruction = false;
+	bIsReconstructingNode = false;
 }
 
 void UFlowGraphNode::AllocateDefaultPins()
@@ -379,7 +410,11 @@ void UFlowGraphNode::RewireOldPinsToNewPins(TArray<UEdGraphPin*>& InOldPins)
 			OldPin->bOrphanedPin = true;
 			OldPin->bNotConnectable = true;
 			OrphanedOldPins.Add(OldPin);
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION < 4
 			InOldPins.RemoveAt(OldPinIndex, 1, false);
+#else
+			InOldPins.RemoveAt(OldPinIndex, 1, EAllowShrinking::No);
+#endif
 		}
 	}
 
@@ -449,7 +484,7 @@ void UFlowGraphNode::GetNodeContextMenuActions(class UToolMenu* Menu, class UGra
 				"AttachAddOn",
 				LOCTEXT("AttachAddOn", "Attach AddOn..."),
 				LOCTEXT("AttachAddOnTooltip", "Attaches an AddOn to the Node"),
-				FNewToolMenuDelegate::CreateUObject(this, &UFlowGraphNode::CreateAttachAddOnSubMenu, (UEdGraph*)Context->Graph)
+				FNewToolMenuDelegate::CreateUObject(this, &UFlowGraphNode::CreateAttachAddOnSubMenu, static_cast<UEdGraph*>(Context->Graph))
 			);
 		}
 
@@ -535,7 +570,7 @@ void UFlowGraphNode::CreateAttachAddOnSubMenu(UToolMenu* Menu, UEdGraph* Graph) 
 {
 	UFlowGraphNode* MutableThis = const_cast<UFlowGraphNode*>(this);
 
-	TSharedRef<SGraphEditorActionMenuFlow> Widget =
+	const TSharedRef<SGraphEditorActionMenuFlow> Widget =
 		SNew(SGraphEditorActionMenuFlow)
 		.GraphObj(Graph)
 		.GraphNode(MutableThis)
@@ -551,7 +586,28 @@ bool UFlowGraphNode::CanUserDeleteNode() const
 
 bool UFlowGraphNode::CanDuplicateNode() const
 {
-	return NodeInstance ? NodeInstance->bCanDuplicate : Super::CanDuplicateNode();
+	if (NodeInstance)
+	{
+		return NodeInstance->bCanDuplicate;
+	}
+
+	// support code paths calling this method on CDO, where there's no Flow Node Instance
+	if (AssignedNodeClasses.Num() > 0)
+	{
+		// we simply allow action if any Assigned Node Class accepts it, as the action is disallowed in special node likes StartNode
+		for (const UClass* Class : AssignedNodeClasses)
+		{
+			const UFlowNode* NodeDefaults = Class->GetDefaultObject<UFlowNode>();
+			if (NodeDefaults && NodeDefaults->bCanDuplicate)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	return true;
 }
 
 TSharedPtr<SGraphNode> UFlowGraphNode::CreateVisualWidget()
@@ -599,12 +655,7 @@ FLinearColor UFlowGraphNode::GetNodeTitleColor() const
 			return DynamicColor;
 		}
 
-		UFlowGraphSettings* GraphSettings = UFlowGraphSettings::Get();
-		if (const FLinearColor* NodeSpecificColor = GraphSettings->NodeSpecificColors.Find(NodeInstance->GetClass()))
-		{
-			return *NodeSpecificColor;
-		}
-		if (const FLinearColor* StyleColor = GraphSettings->NodeTitleColors.Find(NodeInstance->GetNodeStyle()))
+		if (const FLinearColor* StyleColor = UFlowGraphSettings::Get()->LookupNodeTitleColorForNode(*NodeInstance))
 		{
 			return *StyleColor;
 		}
@@ -623,7 +674,7 @@ FText UFlowGraphNode::GetTooltipText() const
 	FText Tooltip;
 	if (NodeInstance)
 	{
-		Tooltip = NodeInstance->GetClass()->GetToolTipText();
+		Tooltip = NodeInstance->GetNodeToolTip();
 	}
 	if (Tooltip.IsEmpty())
 	{
@@ -669,7 +720,7 @@ FString UFlowGraphNode::GetStatusString() const
 	{
 		if (const UFlowNode* InspectedInstance = FlowNode->GetInspectedInstance())
 		{
-			return InspectedInstance->GetStatusString();
+			return InspectedInstance->GetStatusStringForNodeAndAddOns();
 		}
 	}
 
@@ -767,7 +818,12 @@ void UFlowGraphNode::CreateInputPin(const FFlowPin& FlowPin, const int32 Index /
 		return;
 	}
 
-	const FEdGraphPinType PinType = FEdGraphPinType(UEdGraphSchema_K2::PC_Exec, FName(NAME_None), nullptr, EPinContainerType::None, false, FEdGraphTerminalType());
+	const FName PinCategory = GetPinCategoryFromFlowPin(FlowPin);
+	const FName PinSubCategory = NAME_None;
+	UObject* PinSubCategoryObject = FlowPin.GetPinSubCategoryObject().Get();
+	constexpr bool bIsReference = false;
+
+	const FEdGraphPinType PinType = FEdGraphPinType(PinCategory, PinSubCategory, PinSubCategoryObject, EPinContainerType::None, bIsReference, FEdGraphTerminalType());
 	UEdGraphPin* NewPin = CreatePin(EGPD_Input, PinType, FlowPin.PinName, Index);
 	check(NewPin);
 
@@ -789,7 +845,12 @@ void UFlowGraphNode::CreateOutputPin(const FFlowPin& FlowPin, const int32 Index 
 		return;
 	}
 
-	const FEdGraphPinType PinType = FEdGraphPinType(UEdGraphSchema_K2::PC_Exec, FName(NAME_None), nullptr, EPinContainerType::None, false, FEdGraphTerminalType());
+	const FName PinCategory = GetPinCategoryFromFlowPin(FlowPin);
+	const FName PinSubCategory = NAME_None;
+	UObject* PinSubCategoryObject = FlowPin.GetPinSubCategoryObject().Get();
+	constexpr bool bIsReference = false;
+
+	const FEdGraphPinType PinType = FEdGraphPinType(PinCategory, PinSubCategory, PinSubCategoryObject, EPinContainerType::None, bIsReference, FEdGraphTerminalType());
 	UEdGraphPin* NewPin = CreatePin(EGPD_Output, PinType, FlowPin.PinName, Index);
 	check(NewPin);
 
@@ -940,8 +1001,25 @@ void UFlowGraphNode::RefreshContextPins(const bool bReconstructNode)
 		return;
 	}
 
-	const bool bShouldConsiderRefreshingContextPins = SupportsContextPins() || bHasContextPins;
-	if (!bShouldConsiderRefreshingContextPins)
+	// Update the auto-generated pins before refreshing context pins
+	bool bChangedAutoFlowPins = false;
+	if (UFlowAsset* FlowAsset = NodeInstance->GetFlowAsset())
+	{
+		bChangedAutoFlowPins = FlowAsset->TryUpdateManagedFlowPinsForNode(*FlowNode);
+	}
+
+	bool bIsLoad = false;
+	if (const UFlowGraph* FlowGraph = GetFlowGraph())
+	{
+		bIsLoad = FlowGraph->IsLoadingGraph();
+	}
+
+	// Confirm that we should be refreshing context pins
+	const bool bIsAllowedToRefreshPins = !bIsLoad || NodeInstance->CanRefreshContextPinsOnLoad();
+	const bool bShouldConsiderRefreshingContextPins = bIsAllowedToRefreshPins && (SupportsContextPins() || bHasContextPins);
+	const bool bShouldRefreshContextPins = bShouldConsiderRefreshingContextPins || bChangedAutoFlowPins || bNeedsFullReconstruction;
+
+	if (!bShouldRefreshContextPins)
 	{
 		return;
 	}
@@ -955,26 +1033,29 @@ void UFlowGraphNode::RefreshContextPins(const bool bReconstructNode)
 	// Skip the rest if the node went from no ContextPins to no ContextPins
 	const bool bMaintainedNoContextPins = !bPrevHasContextPins && !bHasContextPins;
 
-	if (!bMaintainedNoContextPins)
+	if (bMaintainedNoContextPins || !HavePinsChanged())
 	{
-		const FScopedTransaction Transaction(LOCTEXT("RefreshContextPins", "Refresh Context Pins"));
-		Modify();
+		// We don't have contextual pins to account for; or the contextual pins have not changed. We can skip now. 
+		return;
+	}
 
-		const UFlowNode* NodeDefaults = FlowNode->GetClass()->GetDefaultObject<UFlowNode>();
+	const FScopedTransaction Transaction(LOCTEXT("RefreshContextPins", "Refresh Context Pins"));
+	Modify();
 
-		// recreate inputs
-		FlowNode->InputPins = NodeDefaults->InputPins;
-		FlowNode->AddInputPins(ContextInputs);
+	const UFlowNode* NodeDefaults = FlowNode->GetClass()->GetDefaultObject<UFlowNode>();
 
-		// recreate outputs
-		FlowNode->OutputPins = NodeDefaults->OutputPins;
-		FlowNode->AddOutputPins(ContextOutputs);
+	// recreate inputs
+	FlowNode->InputPins = NodeDefaults->InputPins;
+	FlowNode->AddInputPins(ContextInputs);
 
-		if (bReconstructNode && !bMaintainedNoContextPins)
-		{
-			ReconstructNode();
-			GetGraph()->NotifyGraphChanged();
-		}
+	// recreate outputs
+	FlowNode->OutputPins = NodeDefaults->OutputPins;
+	FlowNode->AddOutputPins(ContextOutputs);
+
+	if (bReconstructNode)
+	{
+		ReconstructNode();
+		GetGraph()->NotifyGraphChanged();
 	}
 }
 
@@ -1022,6 +1103,11 @@ void UFlowGraphNode::GetPinHoverText(const UEdGraphPin& Pin, FString& HoverTextO
 			}
 		}
 	}
+}
+
+const FName& UFlowGraphNode::GetPinCategoryFromFlowPin(const FFlowPin& FlowPin)
+{
+	return FFlowPin::GetPinCategoryFromPinType(FlowPin.GetPinType());
 }
 
 void UFlowGraphNode::OnInputTriggered(const int32 Index)
@@ -1175,15 +1261,72 @@ void UFlowGraphNode::PostEditUndo()
 	}
 }
 
-void UFlowGraphNode::LogError(const FString& MessageToLog, const UFlowNodeBase* FlowNodeBase)
+UFlowAsset* UFlowGraphNode::GetFlowAsset() const
 {
 	if (UFlowGraph* FlowGraph = GetFlowGraph())
 	{
 		if (UFlowAsset* FlowAsset = FlowGraph->GetFlowAsset())
 		{
-			FlowAsset->LogError(MessageToLog, const_cast<UFlowNodeBase*>(FlowNodeBase));
+			return FlowAsset;
 		}
 	}
+
+	return nullptr;
+}
+
+void UFlowGraphNode::LogError(const FString& MessageToLog, const UFlowNodeBase* FlowNodeBase) const
+{
+	if (UFlowAsset* FlowAsset = GetFlowAsset())
+	{
+		FlowAsset->LogError(MessageToLog, FlowNodeBase);
+	}
+}
+
+bool UFlowGraphNode::HavePinsChanged()
+{
+	const UFlowNode* FlowNodeInstance = Cast<UFlowNode>(NodeInstance);
+	if (!IsValid(FlowNodeInstance))
+	{
+		// default to having changed because we don't have a way to confirm that the pins have remained intact. 
+		return true;
+	}
+
+	// Get the pins that are part of the node itself. We use the CDO because it inherently knows about the built-in
+	// pins for this node. 
+	const UFlowNode* FlowNodeCDO = FlowNodeInstance->GetClass()->GetDefaultObject<UFlowNode>();
+	check(IsValid(FlowNodeCDO));
+
+	TArray<FFlowPin> AllFlowPins = FlowNodeCDO->GetInputPins();
+	AllFlowPins.Append(FlowNodeCDO->GetOutputPins());
+
+	// Get the contextual pins for the underlying flow node instance.  
+	AllFlowPins.Append(FlowNodeInstance->GetContextInputs());
+	AllFlowPins.Append(FlowNodeInstance->GetContextOutputs());
+
+	if (Pins.Num() != AllFlowPins.Num())
+	{
+		// There is a different number of EdGraphPins and Flow Node pins; something changed.
+		return true;
+	}
+
+	TArray<FName> PinNames;
+	for (const UEdGraphPin* Pin : Pins)
+	{
+		PinNames.Add(Pin->PinName);
+	}
+
+	for (const FFlowPin& Pin : AllFlowPins)
+	{
+		if (!PinNames.Contains(Pin.PinName))
+		{
+			// Could not match the pin from the flow node with any of the EdPins array.
+			// we have a mismatch between the ed graph pins and the flow node, something changed. 
+			return true;
+		}
+	}
+
+	// Nothing changed
+	return false;
 }
 
 void UFlowGraphNode::ResetNodeOwner()
@@ -1193,7 +1336,7 @@ void UFlowGraphNode::ResetNodeOwner()
 		UEdGraph* MyGraph = GetGraph();
 		UObject* GraphOwner = MyGraph ? MyGraph->GetOuter() : nullptr;
 
-		NodeInstance->Rename(NULL, GraphOwner, REN_DontCreateRedirectors | REN_DoNotDirty);
+		NodeInstance->Rename(nullptr, GraphOwner, REN_DontCreateRedirectors | REN_DoNotDirty);
 		NodeInstance->ClearFlags(RF_Transient);
 
 		for (auto& SubNode : SubNodes)
@@ -1281,7 +1424,7 @@ void UFlowGraphNode::SetParentNodeForSubNode(UFlowGraphNode* InParentNode)
 {
 	if (InParentNode)
 	{
-		// Once a subnode, always a subnode
+		// Once a SubNode, always a SubNode
 		bIsSubNode = true;
 	}
 
@@ -1321,7 +1464,7 @@ void UFlowGraphNode::RebuildRuntimeAddOnsFromEditorSubNodes()
 		}
 	}
 
-	// Update the subnodes as well
+	// Update the SubNodes as well
 	for (UFlowGraphNode* SubNode : SubNodes)
 	{
 		if (IsValid(SubNode))
@@ -1342,7 +1485,7 @@ void UFlowGraphNode::FindDiffs(UEdGraphNode* OtherNode, FDiffResults& Results)
 {
 	Super::FindDiffs(OtherNode, Results);
 
-	UFlowGraphNode* OtherGraphNode = Cast<UFlowGraphNode>(OtherNode);
+	const UFlowGraphNode* OtherGraphNode = Cast<UFlowGraphNode>(OtherNode);
 	if (!IsValid(OtherGraphNode))
 	{
 		return;
@@ -1354,6 +1497,8 @@ void UFlowGraphNode::FindDiffs(UEdGraphNode* OtherNode, FDiffResults& Results)
 		Diff.Diff = EDiffType::NODE_PROPERTY;
 		Diff.Node1 = this;
 		Diff.Node2 = OtherNode;
+		Diff.Object1 = NodeInstance;
+		Diff.Object2 = OtherGraphNode->NodeInstance;
 		Diff.ToolTip = LOCTEXT("DIF_NodeInstancePropertyToolTip", "A property of the node instance has changed");
 		Diff.Category = EDiffType::MODIFICATION;
 
@@ -1566,6 +1711,44 @@ bool UFlowGraphNode::HasErrors() const
 	return ErrorMessage.Len() > 0 || !IsValid(NodeInstance);
 }
 
+void UFlowGraphNode::ValidateGraphNode(FFlowMessageLog& MessageLog) const
+{
+	// Verify that all input data pin connections are legal
+
+	if (!NodeInstance)
+	{
+		// Missing the node instance!
+
+		MessageLog.Error<UFlowNode>(TEXT("FlowGraphNode is missing its UFlowNode instance!"), nullptr);
+
+		return;
+	}
+
+	const UFlowGraphSchema* Schema = CastChecked<UFlowGraphSchema>(GetSchema());
+	for (const UEdGraphPin* EdGraphPin : InputPins)
+	{
+		if (!FFlowPin::IsDataPinCategory(EdGraphPin->PinType.PinCategory))
+		{
+			continue;
+		}
+
+		if (!EdGraphPin->HasAnyConnections())
+		{
+			continue;
+		}
+
+		for (UEdGraphPin* const ConnectedPin : EdGraphPin->LinkedTo)
+		{
+			const FPinConnectionResponse Response = Schema->CanCreateConnection(ConnectedPin, EdGraphPin);
+
+			if (!Response.CanSafeConnect())
+			{
+				MessageLog.Error<UFlowNodeBase>(*FString::Printf(TEXT("Pin %s has invalid connection: %s"), *EdGraphPin->GetName(), *Response.Message.ToString()), NodeInstance);
+			}
+		}
+	}
+}
+
 bool UFlowGraphNode::IsAncestorNode(const UFlowGraphNode& OtherNode) const
 {
 	const UFlowGraphNode* CurParentNode = ParentNode;
@@ -1582,9 +1765,9 @@ bool UFlowGraphNode::IsAncestorNode(const UFlowGraphNode& OtherNode) const
 	return false;
 }
 
-bool UFlowGraphNode::CanAcceptSubNodeAsChild(const UFlowGraphNode& OtherSubNode, FString* OutReasonString) const
+bool UFlowGraphNode::CanAcceptSubNodeAsChild(const UFlowGraphNode& SubNodeToConsider, const TSet<const UEdGraphNode*>& AllRootSubNodesToPaste, FString* OutReasonString) const
 {
-	const UFlowNodeBase* OtherFlowNodeSubNode = OtherSubNode.NodeInstance;
+	const UFlowNodeBase* OtherFlowNodeSubNode = SubNodeToConsider.NodeInstance;
 
 	if (!OtherFlowNodeSubNode)
 	{
@@ -1596,27 +1779,41 @@ bool UFlowGraphNode::CanAcceptSubNodeAsChild(const UFlowGraphNode& OtherSubNode,
 		return false;
 	}
 
-	if (IsAncestorNode(OtherSubNode))
+	if (IsAncestorNode(SubNodeToConsider))
 	{
 		if (OutReasonString)
 		{
 			*OutReasonString = TEXT("Cannot be a AddOn of one of our own AddOns");
 		}
-	
+
 		return false;
 	}
 
 	check(OtherFlowNodeSubNode);
-	const UFlowNodeAddOn* OtherAddOnTemplate = Cast<UFlowNodeAddOn>(OtherFlowNodeSubNode);
+	const UFlowNodeAddOn* AddOnToConsider = Cast<UFlowNodeAddOn>(OtherFlowNodeSubNode);
+
+	// Build the array of other root AddOns that will also be added as children as an atomic operation (eg, multi-paste)
+	TArray<UFlowNodeAddOn*> OtherAddOnsToPaste;
+
+	for (TSet<const UEdGraphNode*>::TConstIterator It(AllRootSubNodesToPaste); It; ++It)
+	{
+		const UFlowGraphNode* NodeToPaste = Cast<UFlowGraphNode>(*It);
+		UFlowNodeAddOn* AddOnToPaste = Cast<UFlowNodeAddOn>(NodeToPaste->NodeInstance);
+
+		if (IsValid(AddOnToPaste) && AddOnToPaste != AddOnToConsider)
+		{
+			OtherAddOnsToPaste.Add(AddOnToPaste);
+		}
+	}
 
 	const UFlowNodeBase* ThisFlowNodeBase = NodeInstance;
-	const EFlowAddOnAcceptResult AcceptResult = ThisFlowNodeBase->CheckAcceptFlowNodeAddOnChild(OtherAddOnTemplate);
+	const EFlowAddOnAcceptResult AcceptResult = ThisFlowNodeBase->CheckAcceptFlowNodeAddOnChild(AddOnToConsider, OtherAddOnsToPaste);
 
 	// Undetermined and Reject both count as Rejection, only TentativeAccept is an 'accept' result
 
 	if (AcceptResult == EFlowAddOnAcceptResult::TentativeAccept)
 	{
-		static_assert(static_cast<__underlying_type(EFlowAddOnAcceptResult)>(EFlowAddOnAcceptResult::Max) == 3, "This code may need updating if the enum values change");
+		FLOW_ASSERT_ENUM_MAX(EFlowAddOnAcceptResult, 3);
 
 		return true;
 	}

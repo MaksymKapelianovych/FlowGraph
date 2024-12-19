@@ -29,6 +29,11 @@ private:
 	static TMap<FName, FAssetData> BlueprintFlowNodeAddOns;
 	static TMap<TSubclassOf<UFlowNodeBase>, TSubclassOf<UEdGraphNode>> GraphNodesByFlowNodes;
 
+	// cached pointers to struct types
+	static const UScriptStruct* VectorStruct;
+	static const UScriptStruct* RotatorStruct;
+	static const UScriptStruct* TransformStruct;
+
 	static bool bBlueprintCompilationPending;
 
 public:
@@ -49,14 +54,51 @@ public:
 	virtual int32 GetNodeSelectionCount(const UEdGraph* Graph) const override;
 	virtual TSharedPtr<FEdGraphSchemaAction> GetCreateCommentAction() const override;
 	virtual void OnPinConnectionDoubleCicked(UEdGraphPin* PinA, UEdGraphPin* PinB, const FVector2D& GraphPosition) const override;
+	virtual bool IsCacheVisualizationOutOfDate(int32 InVisualizationCacheID) const override;
+	virtual int32 GetCurrentVisualizationCacheID() const override;
+	virtual void ForceVisualizationCacheClear() const override;
+	virtual bool ArePinsCompatible(const UEdGraphPin* PinA, const UEdGraphPin* PinB, const UClass* CallingContext = nullptr, bool bIgnoreArray = false) const override;
+	virtual void ConstructBasicPinTooltip(const UEdGraphPin& Pin, const FText& PinDescription, FString& TooltipOut) const override;
+	virtual bool IsTitleBarPin(const UEdGraphPin& Pin) const override;
+	virtual bool CanShowDataTooltipForPin(const UEdGraphPin& Pin) const override;
 	// --
 
 	// FlowGraphSchema
+
+	/**
+	 * Returns true if the two pin types are schema compatible.  Handles outputting a more derived
+	 * type to an input pin expecting a less derived type.
+	 *
+	 * @param	Output		  	The output type.
+	 * @param	Input		  	The input type.
+	 * @param	CallingContext	(optional) The calling context (required to properly evaluate pins of type Self)
+	 * @param	bIgnoreArray	(optional) Whether or not to ignore differences between array and non-array types
+	 *
+	 * @return	true if the pin types are compatible.
+	 */
+	virtual bool ArePinTypesCompatible(const FEdGraphPinType& Output, const FEdGraphPinType& Input, const UClass* CallingContext = NULL, bool bIgnoreArray = false) const;
+
+	/**
+	 * Returns the connection response for connecting PinA to PinB, which have already been determined to be compatible
+	 * types with a compatible direction.  InputPin and OutputPin are PinA and PinB or vis versa, indicating their direction.
+	 *
+	 * @param	PinA		  	The pin a.
+	 * @param	PinB		  	The pin b.
+	 * @param	InputPin	  	Either PinA or PinB, depending on which one is the input.
+	 * @param	OutputPin	  	Either PinA or PinB, depending on which one is the output.
+	 *
+	 * @return	The message and action to take on trying to make this connection.
+	 */
+	virtual const FPinConnectionResponse DetermineConnectionResponseOfCompatibleTypedPins(const UEdGraphPin* PinA, const UEdGraphPin* PinB, const UEdGraphPin* InputPin, const UEdGraphPin* OutputPin) const;
+
 	virtual void GetGraphNodeContextActions(FGraphContextMenuBuilder& ContextMenuBuilder, int32 SubNodeFlags) const;
 
-	bool IsAddOnAllowedForSelectedObjects(const TArray<UObject*>& SelectedObjects, const UFlowNodeAddOn* AddOnTemplate) const;
+	static bool IsAddOnAllowedForSelectedObjects(const TArray<UObject*>& SelectedObjects, const UFlowNodeAddOn* AddOnTemplate);
 
-		// --
+	// --
+
+	static void UpdateGeneratedDisplayNames();
+	static void UpdateGeneratedDisplayName(UClass* NodeClass, bool bBatch = false);
 
 	static TArray<TSharedPtr<FString>> GetFlowNodeCategories();
 	static TSubclassOf<UEdGraphNode> GetAssignedGraphNodeClass(const TSubclassOf<UFlowNodeBase>& FlowNodeClass);
@@ -65,6 +107,8 @@ public:
 
 protected:
 	static UFlowGraphNode* CreateDefaultNode(UEdGraph& Graph, const UFlowAsset* AssetClassDefaults, const TSubclassOf<UFlowNode>& NodeClass, const FVector2D& Offset, bool bPlacedAsGhostNode);
+
+	static bool ArePinCategoriesEffectivelyMatching(const FName& InputPinCategory, const FName& OutputPinCategory, bool bAllowImplicitCasts = true);
 
 private:
 	static void ApplyNodeOrAddOnFilter(const UFlowAsset* AssetClassDefaults, const UClass* FlowNodeClass, TArray<UFlowNodeBase*>& FilteredNodes);
@@ -87,10 +131,15 @@ private:
 	static bool ShouldAddToBlueprintFlowNodesMap(const FAssetData& AssetData, const TSubclassOf<UBlueprint>& BlueprintClass, const TSubclassOf<UFlowNodeBase>& FlowNodeBaseClass);
 
 	static void OnAssetRemoved(const FAssetData& AssetData);
+	static void OnAssetRenamed(const FAssetData& AssetData, const FString& OldObjectPath);
 
 public:
 	static FFlowGraphSchemaRefresh OnNodeListChanged;
 	static UBlueprint* GetPlaceableNodeOrAddOnBlueprint(const FAssetData& AssetData);
 
 	static const UFlowAsset* GetEditedAssetOrClassDefault(const UEdGraph* Graph);
+
+private:
+	// ID for checking dirty status of node titles against
+	static int32 CurrentCacheRefreshID;
 };
