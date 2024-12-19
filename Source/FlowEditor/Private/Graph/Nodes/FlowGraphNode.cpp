@@ -13,7 +13,6 @@
 #include "Graph/Widgets/SGraphEditorActionMenuFlow.h"
 #include "FlowAsset.h"
 #include "Nodes/FlowNode.h"
-#include "Nodes/Route/FlowNode_CustomInput.h"
 
 #include "BlueprintNodeHelpers.h"
 #include "Developer/ToolMenus/Public/ToolMenus.h"
@@ -45,9 +44,7 @@ UFlowGraphNode::UFlowGraphNode(const FObjectInitializer& ObjectInitializer)
 
 void UFlowGraphNode::SetNodeTemplate(UFlowNodeBase* InFlowNode)
 {
-	ensure(InFlowNode);
 	NodeInstance = InFlowNode;
-	NodeInstanceClass = InFlowNode->GetClass();
 }
 
 const UFlowNodeBase* UFlowGraphNode::GetNodeTemplate() const
@@ -154,16 +151,6 @@ void UFlowGraphNode::PrepareForCopying()
 	{
 		// Temporarily take ownership of the node instance, so that it is not deleted when cutting
 		NodeInstance->Rename(nullptr, this, REN_DontCreateRedirectors | REN_DoNotDirty);
-	}
-}
-
-void UFlowGraphNode::PostPasteNode()
-{
-	// Sets correct generic name for CustomInput node, because it can be created as substitute node for Start node
-	// Can be moved to separate GraphNode class for CustomInput node, if needed
-	if (NodeInstanceClass == UFlowNode_CustomInput::StaticClass())
-	{
-		Rename(nullptr, GetOuter(), REN_DontCreateRedirectors);
 	}
 }
 
@@ -566,30 +553,12 @@ void UFlowGraphNode::CreateAttachAddOnSubMenu(UToolMenu* Menu, UEdGraph* Graph) 
 
 bool UFlowGraphNode::CanUserDeleteNode() const
 {
-	if (NodeInstance)
-	{
-		return NodeInstance->bCanDelete;
-	}
-	else if (NodeInstanceClass)
-	{
-		UFlowNodeBase* Node = NodeInstanceClass->GetDefaultObject<UFlowNodeBase>();
-		return Node->bCanDelete;
-	}
-	return Super::CanUserDeleteNode();
+	return NodeInstance ? NodeInstance->bCanDelete : Super::CanUserDeleteNode();
 }
 
 bool UFlowGraphNode::CanDuplicateNode() const
 {
-	if (NodeInstance)
-	{
-		return NodeInstance->bCanDuplicate;
-	}
-	else if (NodeInstanceClass)
-	{
-		UFlowNodeBase* Node = NodeInstanceClass->GetDefaultObject<UFlowNodeBase>();
-		return Node->bCanDuplicate;
-	}
-	return Super::CanDuplicateNode();
+	return NodeInstance ? NodeInstance->bCanDuplicate : Super::CanDuplicateNode();
 }
 
 bool UFlowGraphNode::CanPasteHere( const UEdGraph* TargetGraph ) const
