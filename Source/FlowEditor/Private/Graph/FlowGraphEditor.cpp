@@ -919,10 +919,8 @@ bool SFlowGraphEditor::CanPasteNodesAsSubNodes(const TSet<UEdGraphNode*>& NodesT
 
 void SFlowGraphEditor::DuplicateNodes()
 {
-	bIsDuplicating = true;
 	CopySelectedNodes();
 	PasteNodes();
-	bIsDuplicating = false;
 }
 
 bool SFlowGraphEditor::CanDuplicateNodes() const
