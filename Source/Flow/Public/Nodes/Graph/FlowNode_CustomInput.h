@@ -21,7 +21,6 @@ protected:
 public:
 	virtual void PostEditImport() override;
 
-protected:
 #if WITH_EDITOR
 public:
 	virtual FText GetNodeTitle() const override;

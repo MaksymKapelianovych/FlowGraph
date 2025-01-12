@@ -9,10 +9,10 @@
 #include "AddOns/FlowNodeAddOn.h"
 #include "Interfaces/FlowDataPinGeneratorNodeInterface.h"
 #include "Nodes/FlowNodeBase.h"
-#include "Nodes/Route/FlowNode_CustomInput.h"
-#include "Nodes/Route/FlowNode_CustomOutput.h"
-#include "Nodes/Route/FlowNode_Start.h"
-#include "Nodes/Route/FlowNode_SubGraph.h"
+#include "Nodes/Graph/FlowNode_CustomInput.h"
+#include "Nodes/Graph/FlowNode_CustomOutput.h"
+#include "Nodes/Graph/FlowNode_Start.h"
+#include "Nodes/Graph/FlowNode_SubGraph.h"
 
 #include "Engine/World.h"
 #include "Serialization/MemoryReader.h"
@@ -331,30 +331,45 @@ void UFlowAsset::UnregisterNode(const FGuid& NodeGuid)
 	MarkPackageDirty();
 }
 
-void UFlowAsset::HarvestNodeConnections()
+void UFlowAsset::HarvestNodeConnections(UFlowNode* TargetNode)
 {
-	TMap<FName, FConnectedPin> Connections;
-	bool bGraphDirty = false;
+	TArray<UFlowNode*> TargetNodes;
 
-	// last moment to remove invalid nodes
-	for (auto NodeIt = Nodes.CreateIterator(); NodeIt; ++NodeIt)
+	if (IsValid(TargetNode))
 	{
-		const TPair<FGuid, UFlowNode*>& Pair = *NodeIt;
-		if (Pair.Value == nullptr)
+		TargetNodes.Reserve(1);
+		TargetNodes.Add(TargetNode);
+	}
+	else
+	{
+		TargetNodes.Reserve(Nodes.Num());
+		for (const TPair<FGuid, UFlowNode*>& Pair : ObjectPtrDecay(Nodes))
+		{
+			TargetNodes.Add(Pair.Value);
+		}
+	}
+	
+	// Remove any invalid nodes
+	for (auto NodeIt = TargetNodes.CreateIterator(); NodeIt; ++NodeIt)
+	{
+		if (*NodeIt == nullptr)
 		{
 			NodeIt.RemoveCurrent();
-			bGraphDirty = true;
+			Modify();
 		}
 	}
 
-	for (const TPair<FGuid, UFlowNode*>& Pair : ObjectPtrDecay(Nodes))
+	bool bAnyNodeDirty = false;
+	
+	for (UFlowNode* FlowNode : TargetNodes)
 	{
-		UFlowNode* FlowNode = Pair.Value;
+		bool bNodeDirty = false;
+
 		TMap<FName, FConnectedPin> FoundConnections;
 		const TArray<UEdGraphPin*>& GraphNodePins = FlowNode->GetGraphNode()->Pins;
 
 		for (const UEdGraphPin* ThisPin : GraphNodePins)
-		{
+		{			
 			const bool bIsExecPin = FFlowPin::IsExecPinCategory(ThisPin->PinType.PinCategory);
 			const bool bIsDataPin = FFlowPin::IsDataPinCategory(ThisPin->PinType.PinCategory);
 			const bool bIsOutputPin = (ThisPin->Direction == EGPD_Output);
@@ -383,13 +398,13 @@ void UFlowAsset::HarvestNodeConnections()
 
 		// This check exists to ensure that we don't mark graph dirty, if none of connections changed
 		// Optimization: we need check it only until the first node would be marked dirty, as this already marks Flow Asset package dirty
-		if (bGraphDirty == false)
+		if (bAnyNodeDirty == false)
 		{
 			const TMap<FName, FConnectedPin>& OldConnections = FlowNode->Connections;
 
 			if (FoundConnections.Num() != OldConnections.Num())
 			{
-				bGraphDirty = true;
+				bNodeDirty = true;
 			}
 			else
 			{
@@ -399,20 +414,20 @@ void UFlowAsset::HarvestNodeConnections()
 					{
 						if (FoundConnection.Value != *OldConnection)
 						{
-							bGraphDirty = true;
+							bNodeDirty = true;
 							break;
 						}
 					}
 					else
 					{
-						bGraphDirty = true;
+						bNodeDirty = true;
 						break;
 					}
 				}
 			}
 		}
 
-		if (bGraphDirty)
+		if (bNodeDirty || bAnyNodeDirty)
 		{
 			FlowNode->SetFlags(RF_Transactional);
 			FlowNode->Modify();
@@ -422,7 +437,7 @@ void UFlowAsset::HarvestNodeConnections()
 		}
 	}
 
-	// NOTE (gtaylor) @mothdoctor, do we need to do anything with bGraphDirty here?  
+	// NOTE (gtaylor) @mothdoctor, do we need to do anything with bGraphDirty [renamed by @HomerJohnston to bAnyNodeDirty] here?  
 	// It's scope seems like we wanted to do something at this point.
 }
 
@@ -1112,10 +1127,12 @@ void UFlowAsset::BroadcastRuntimeMessageAdded(const TSharedRef<FTokenizedMessage
 }
 #endif // WITH_EDITOR
 
-void UFlowAsset::InitializeInstance(const TWeakObjectPtr<UObject> InOwner, UFlowAsset* InTemplateAsset)
+void UFlowAsset::InitializeInstance(const TWeakObjectPtr<UObject> InOwner, UFlowAsset& InTemplateAsset)
 {
+	check(!IsInstanceInitialized());
+
 	Owner = InOwner;
-	TemplateAsset = InTemplateAsset;
+	TemplateAsset = &InTemplateAsset;
 
 	for (TPair<FGuid, TObjectPtr<UFlowNode>>& Node : Nodes)
 	{
@@ -1136,21 +1153,23 @@ void UFlowAsset::InitializeInstance(const TWeakObjectPtr<UObject> InOwner, UFlow
 
 void UFlowAsset::DeinitializeInstance()
 {
-	for (const TPair<FGuid, UFlowNode*>& Node : ObjectPtrDecay(Nodes))
+	if (IsInstanceInitialized())
 	{
-		if (IsValid(Node.Value))
+		for (const TPair<FGuid, UFlowNode*>& Node : ObjectPtrDecay(Nodes))
 		{
-			Node.Value->DeinitializeInstance();
+			if (IsValid(Node.Value))
+			{
+				Node.Value->DeinitializeInstance();
+			}
 		}
-	}
 
-	if (TemplateAsset)
-	{
 		const int32 ActiveInstancesLeft = TemplateAsset->RemoveInstance(this);
 		if (ActiveInstancesLeft == 0 && GetFlowSubsystem())
 		{
 			GetFlowSubsystem()->RemoveInstancedTemplate(TemplateAsset);
 		}
+
+		TemplateAsset = nullptr;
 	}
 }
 
@@ -1159,6 +1178,8 @@ void UFlowAsset::PreStartFlow()
 	ResetNodes();
 
 #if WITH_EDITOR
+	check(IsInstanceInitialized());
+
 	if (TemplateAsset->ActiveInstances.Num() == 1)
 	{
 		// this instance is the only active one, set it directly as Inspected Instance
@@ -1324,6 +1345,7 @@ void UFlowAsset::FinishNode(UFlowNode* Node)
 				if (RootFlowInstances.Contains(this))
 				{
 					GetFlowSubsystem()->FinishRootFlow(Owner.Get(), TemplateAsset, EFlowFinishPolicy::Keep);
+
 					return;
 				}
 			}
@@ -1461,7 +1483,7 @@ void UFlowAsset::LogError(const FString& MessageToLog, const UFlowNodeBase* Node
 	// this is runtime log which is should be only called on runtime instances of asset
 	if (TemplateAsset == nullptr)
 	{
-		UE_LOG(LogFlow, Log, TEXT("Attempted to use Runtime Log on template asset %s"), *MessageToLog);
+		UE_LOG(LogFlow, Log, TEXT("Attempted to use Runtime Log on null template asset %s"), *MessageToLog);
 	}
 
 	if (RuntimeLog.Get())
@@ -1476,7 +1498,7 @@ void UFlowAsset::LogWarning(const FString& MessageToLog, const UFlowNodeBase* No
 	// this is runtime log which is should be only called on runtime instances of asset
 	if (TemplateAsset == nullptr)
 	{
-		UE_LOG(LogFlow, Log, TEXT("Attempted to use Runtime Log on template asset %s"), *MessageToLog);
+		UE_LOG(LogFlow, Log, TEXT("Attempted to use Runtime Log on null template asset %s"), *MessageToLog);
 	}
 
 	if (RuntimeLog.Get())
@@ -1491,7 +1513,7 @@ void UFlowAsset::LogNote(const FString& MessageToLog, const UFlowNodeBase* Node)
 	// this is runtime log which is should be only called on runtime instances of asset
 	if (TemplateAsset == nullptr)
 	{
-		UE_LOG(LogFlow, Log, TEXT("Attempted to use Runtime Log on template asset %s"), *MessageToLog);
+		UE_LOG(LogFlow, Log, TEXT("Attempted to use Runtime Log on null template asset %s"), *MessageToLog);
 	}
 
 	if (RuntimeLog.Get())
