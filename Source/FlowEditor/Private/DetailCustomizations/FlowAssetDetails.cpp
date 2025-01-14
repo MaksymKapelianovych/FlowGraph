@@ -66,14 +66,13 @@ void FFlowAssetDetails::GenerateCustomPinArray(TSharedRef<IPropertyHandle> Prope
 
 			+ SHorizontalBox::Slot()
 			.AutoWidth()
-            .VAlign( VAlign_Center )
-			.HAlign(HAlign_Center)
+            .VAlign(VAlign_Center)
 			[
 				PropertyCustomizationHelpers::MakeBrowseButton(
-					FSimpleDelegate::CreateRaw(this, &FFlowAssetDetails::OnBrowseClicked, PropertyHandle ),
-					INVTEXT( "Select Event Node in Graph " ),
+					FSimpleDelegate::CreateRaw(this, &FFlowAssetDetails::OnBrowseClicked, PropertyHandle),
+					LOCTEXT("SelectEventNode", "Select Event Node in Graph"),
 					TAttribute<bool>::CreateRaw(this, &FFlowAssetDetails::IsBrowseEnabled, PropertyHandle),
-					true)
+					true) // intentionally true, to set "correct" icon
 			]
 		];
 }
@@ -105,25 +104,25 @@ bool FFlowAssetDetails::VerifyNewCustomPinText(const FText& InNewText, FText& Ou
 	return true;
 }
 
-void FFlowAssetDetails::OnBrowseClicked( TSharedRef<IPropertyHandle> PropertyHandle )
+void FFlowAssetDetails::OnBrowseClicked(TSharedRef<IPropertyHandle> PropertyHandle)
 {
 	ensure(ObjectsBeingEdited[0].IsValid());
 
 	UFlowAsset* Asset = Cast<UFlowAsset>(ObjectsBeingEdited[0]);
-	UFlowNode_CustomEventBase* EventNode = GetCustomEventNode( PropertyHandle );
+	UFlowNode_CustomEventBase* EventNode = GetCustomEventNode(PropertyHandle);
 	
-	if ( EventNode )
+	if (EventNode)
 	{
-		TSharedPtr<SFlowGraphEditor> Editor = FFlowGraphUtils::GetFlowGraphEditor( Asset->GetGraph() );
+		TSharedPtr<SFlowGraphEditor> Editor = FFlowGraphUtils::GetFlowGraphEditor(Asset->GetGraph());
 		Editor->ClearSelectionSet();
-		Editor->SelectSingleNode( EventNode->GetGraphNode() );
-		Editor->ZoomToFit( true );
+		Editor->SelectSingleNode(EventNode->GetGraphNode());
+		Editor->ZoomToFit(true);
 	}
 }
 
-bool FFlowAssetDetails::IsBrowseEnabled( TSharedRef<IPropertyHandle> PropertyHandle ) const
+bool FFlowAssetDetails::IsBrowseEnabled(TSharedRef<IPropertyHandle> PropertyHandle) const
 {
-	return GetCustomEventNode( PropertyHandle ) != nullptr;
+	return GetCustomEventNode(PropertyHandle) != nullptr;
 }
 
 UFlowNode_CustomEventBase* FFlowAssetDetails::GetCustomEventNode(TSharedRef<IPropertyHandle> PropertyHandle) const
@@ -136,16 +135,16 @@ UFlowNode_CustomEventBase* FFlowAssetDetails::GetCustomEventNode(TSharedRef<IPro
 
 	if (ArrayHandle->IsSamePropertyNode(CustomInputsHandle))
 	{
-		UFlowNode_CustomInput* Input = Asset->TryFindCustomInputNodeByEventName( Text );
-		if ( Input )
+		UFlowNode_CustomInput* Input = Asset->TryFindCustomInputNodeByEventName(Text);
+		if (Input)
 		{
 			return Input;
 		}
 	}
 	else if (ArrayHandle->IsSamePropertyNode(CustomOutputsHandle))
 	{
-		UFlowNode_CustomOutput* Output = Asset->TryFindCustomOutputNodeByEventName( Text );
-		if ( Output )
+		UFlowNode_CustomOutput* Output = Asset->TryFindCustomOutputNodeByEventName(Text);
+		if (Output)
 		{
 			return Output;
 		}
