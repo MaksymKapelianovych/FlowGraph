@@ -8,7 +8,7 @@
 #include "Graph/FlowGraphEditorSettings.h"
 #include "Graph/FlowGraphSchema_Actions.h"
 #include "Graph/Nodes/FlowGraphNode.h"
-#include "Nodes/Route/FlowNode_SubGraph.h"
+#include "Nodes/Graph/FlowNode_SubGraph.h"
 
 #include "EdGraphUtilities.h"
 #include "Framework/Application/SlateApplication.h"
@@ -104,9 +104,9 @@ void SFlowGraphEditor::BindGraphCommands()
 	                               FCanExecuteAction::CreateSP(this, &SFlowGraphEditor::CanDuplicateNodes));
 
 	// Pin commands
-	CommandList->MapAction(FlowGraphCommands.RefreshContextPins,
-	                               FExecuteAction::CreateSP(this, &SFlowGraphEditor::RefreshContextPins),
-	                               FCanExecuteAction::CreateSP(this, &SFlowGraphEditor::CanRefreshContextPins));
+	CommandList->MapAction(FlowGraphCommands.ReconstructNode,
+	                               FExecuteAction::CreateSP(this, &SFlowGraphEditor::ReconstructNode),
+	                               FCanExecuteAction::CreateSP(this, &SFlowGraphEditor::CanReconstructNode));
 
 	CommandList->MapAction(FlowGraphCommands.AddInput,
 	                               FExecuteAction::CreateSP(this, &SFlowGraphEditor::AddInput),
@@ -534,14 +534,12 @@ bool SFlowGraphEditor::CanDeleteNodes() const
 		{
 			if (const UEdGraphNode* Node = Cast<UEdGraphNode>(*NodeIt))
 			{
-				if (!Node->CanUserDeleteNode())
+				if (Node->CanUserDeleteNode())
 				{
-					return false;
+					return true;
 				}
 			}
 		}
-
-		return SelectedNodes.Num() > 0;
 	}
 
 	return false;
@@ -595,13 +593,18 @@ void SFlowGraphEditor::CopySelectedNodes() const
 
 void SFlowGraphEditor::PrepareFlowGraphNodeForCopy(UFlowGraphNode& FlowGraphNode, const int32 ParentEdNodeIndex, FGraphPanelSelectionSet& NewSelectedNodes)
 {
-	FlowGraphNode.PrepareForCopying();
-
-	FlowGraphNode.CopySubNodeParentIndex = ParentEdNodeIndex;
-
 	const int32 ThisFlowGraphNodeIndex = NewSelectedNodes.Num();
+	bool bAlreadyInSet = false;
+	NewSelectedNodes.Add(&FlowGraphNode, &bAlreadyInSet);
+
+	if (bAlreadyInSet)
+	{
+		return;
+	}
+
+	FlowGraphNode.PrepareForCopying();
+	FlowGraphNode.CopySubNodeParentIndex = ParentEdNodeIndex;
 	FlowGraphNode.CopySubNodeIndex = ThisFlowGraphNodeIndex;
-	NewSelectedNodes.Add(&FlowGraphNode);
 
 	// append all subnodes for selection
 	for (UFlowGraphNode* SubNode : FlowGraphNode.SubNodes)
@@ -988,15 +991,15 @@ void SFlowGraphEditor::OnNodeTitleCommitted(const FText& NewText, ETextCommit::T
 	}
 }
 
-void SFlowGraphEditor::RefreshContextPins() const
+void SFlowGraphEditor::ReconstructNode() const
 {
 	for (UFlowGraphNode* SelectedNode : GetSelectedFlowNodes())
 	{
-		SelectedNode->RefreshContextPins(true);
+		SelectedNode->ReconstructNode();
 	}
 }
 
-bool SFlowGraphEditor::CanRefreshContextPins() const
+bool SFlowGraphEditor::CanReconstructNode() const
 {
 	if (CanEdit() && GetSelectedFlowNodes().Num() == 1)
 	{

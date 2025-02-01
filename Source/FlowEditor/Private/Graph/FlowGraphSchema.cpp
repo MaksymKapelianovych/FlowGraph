@@ -17,8 +17,8 @@
 #include "Nodes/FlowNode.h"
 #include "Nodes/FlowNodeAddOnBlueprint.h"
 #include "Nodes/FlowNodeBlueprint.h"
-#include "Nodes/Route/FlowNode_CustomInput.h"
-#include "Nodes/Route/FlowNode_Start.h"
+#include "Nodes/Graph/FlowNode_CustomInput.h"
+#include "Nodes/Graph/FlowNode_Start.h"
 #include "Nodes/Route/FlowNode_Reroute.h"
 
 #include "AssetRegistry/AssetRegistryModule.h"
@@ -26,7 +26,6 @@
 #include "EdGraphSchema_K2.h"
 #include "Editor.h"
 #include "Engine/MemberReference.h"
-#include "Engine/UserDefinedStruct.h"
 #include "Kismet/BlueprintTypeConversions.h"
 #include "Kismet2/KismetEditorUtilities.h"
 #include "ScopedTransaction.h"
@@ -251,7 +250,7 @@ void UFlowGraphSchema::CreateDefaultNodesForGraph(UEdGraph& Graph) const
 	FVector2D NodeOffset = FVector2D::ZeroVector;
 
 	// Start node
-	CreateDefaultNode(Graph, AssetClassDefaults, UFlowNode_Start::StaticClass(), NodeOffset, AssetClassDefaults->bStartNodePlacedAsGhostNode);
+	CreateDefaultNode(Graph, UFlowNode_Start::StaticClass(), NodeOffset, AssetClassDefaults->bStartNodePlacedAsGhostNode);
 
 	// Add default nodes for all the CustomInputs
 	if (IsValid(AssetClassDefaults))
@@ -259,7 +258,7 @@ void UFlowGraphSchema::CreateDefaultNodesForGraph(UEdGraph& Graph) const
 		for (const FName& CustomInputName : AssetClassDefaults->CustomInputs)
 		{
 			NodeOffset += NodeOffsetIncrement;
-			const UFlowGraphNode* NewFlowGraphNode = CreateDefaultNode(Graph, AssetClassDefaults, UFlowNode_CustomInput::StaticClass(), NodeOffset, true);
+			const UFlowGraphNode* NewFlowGraphNode = CreateDefaultNode(Graph, UFlowNode_CustomInput::StaticClass(), NodeOffset, true);
 
 			UFlowNode_CustomInput* CustomInputNode = CastChecked<UFlowNode_CustomInput>(NewFlowGraphNode->GetFlowNodeBase());
 			CustomInputNode->SetEventName(CustomInputName);
@@ -270,7 +269,7 @@ void UFlowGraphSchema::CreateDefaultNodesForGraph(UEdGraph& Graph) const
 	FlowAsset->HarvestNodeConnections();
 }
 
-UFlowGraphNode* UFlowGraphSchema::CreateDefaultNode(UEdGraph& Graph, const UFlowAsset* AssetClassDefaults, const TSubclassOf<UFlowNode>& NodeClass, const FVector2D& Offset, const bool bPlacedAsGhostNode)
+UFlowGraphNode* UFlowGraphSchema::CreateDefaultNode(UEdGraph& Graph, const TSubclassOf<UFlowNode>& NodeClass, const FVector2D& Offset, const bool bPlacedAsGhostNode)
 {
 	UFlowGraphNode* NewGraphNode = FFlowGraphSchemaAction_NewNode::CreateNode(&Graph, nullptr, NodeClass, Offset);
 	SetNodeMetaData(NewGraphNode, FNodeMetadata::DefaultGraphNode);
@@ -570,11 +569,17 @@ const FPinConnectionResponse UFlowGraphSchema::CanMergeNodes(const UEdGraphNode*
 
 bool UFlowGraphSchema::TryCreateConnection(UEdGraphPin* PinA, UEdGraphPin* PinB) const
 {
-	const bool bModified = UEdGraphSchema::TryCreateConnection(PinA, PinB);
-
+	bool bModified = UEdGraphSchema::TryCreateConnection(PinA, PinB);
+	
 	if (bModified)
 	{
-		PinA->GetOwningNode()->GetGraph()->NotifyGraphChanged();
+		UFlowGraphNode* FlowGraphNodeA = Cast<UFlowGraphNode>(PinA->GetOwningNode());
+		UFlowGraphNode* FlowGraphNodeB = Cast<UFlowGraphNode>(PinB->GetOwningNode());
+
+		UEdGraph* EdGraph = FlowGraphNodeA->GetGraph();
+
+		EdGraph->NotifyNodeChanged(FlowGraphNodeA);
+		EdGraph->NotifyNodeChanged(FlowGraphNodeB);
 	}
 
 	return bModified;
@@ -751,40 +756,47 @@ bool UFlowGraphSchema::IsTitleBarPin(const UEdGraphPin& Pin) const
 void UFlowGraphSchema::BreakNodeLinks(UEdGraphNode& TargetNode) const
 {
 	Super::BreakNodeLinks(TargetNode);
-
-	UEdGraph* EdGraph = TargetNode.GetGraph();
-	if (IsValid(EdGraph))
-	{
-		EdGraph->NotifyGraphChanged();
-	}
 }
 
 void UFlowGraphSchema::BreakPinLinks(UEdGraphPin& TargetPin, bool bSendsNodeNotification) const
 {
 	const FScopedTransaction Transaction(LOCTEXT("GraphEd_BreakPinLinks", "Break Pin Links"));
 
-	Super::BreakPinLinks(TargetPin, bSendsNodeNotification);
+	TArray<UEdGraphPin*> CachedLinkedTo = TargetPin.LinkedTo;
 
-	// Cache the owning node because calling Super::BreakPinLinks might release the pointer
-	// to the pin owning node as a side effect of notify graph changed events. 
 	UFlowGraphNode* OwningFlowGraphNode = Cast<UFlowGraphNode>(TargetPin.GetOwningNodeUnchecked());
+	UEdGraph* EdGraph = (OwningFlowGraphNode) ? OwningFlowGraphNode->GetGraph() : nullptr;
 
-	// NOTE (gtaylor) It is possible for OwningFlowGraphNode to be null if the TargetPin has been orphaned.
+	Super::BreakPinLinks(TargetPin, bSendsNodeNotification);
 
 	if (TargetPin.bOrphanedPin)
 	{
 		if (OwningFlowGraphNode)
 		{
-			// this calls NotifyGraphChanged()
+			// this calls NotifyNodeChanged()
 			OwningFlowGraphNode->RemoveOrphanedPin(&TargetPin);
 		}
 	}
 	else if (bSendsNodeNotification)
 	{
-		UEdGraph* EdGraph = (OwningFlowGraphNode) ? OwningFlowGraphNode->GetGraph() : nullptr;
 		if (IsValid(EdGraph))
 		{
-			EdGraph->NotifyGraphChanged();
+			EdGraph->NotifyNodeChanged(OwningFlowGraphNode);
+		}
+	}
+
+	for (UEdGraphPin* OtherPin : CachedLinkedTo)
+	{
+		UFlowGraphNode* OtherOwningFlowGraphNode = Cast<UFlowGraphNode>(OtherPin->GetOwningNodeUnchecked());
+		
+		if (OtherPin->bOrphanedPin)
+		{
+			// this calls NotifyNodeChanged()
+			 OtherOwningFlowGraphNode->RemoveOrphanedPin(OtherPin);
+		}
+		else if (bSendsNodeNotification)
+		{
+			EdGraph->NotifyNodeChanged(OtherOwningFlowGraphNode);
 		}
 	}
 }
@@ -1025,12 +1037,12 @@ void UFlowGraphSchema::GetFlowNodeActions(FGraphActionMenuBuilder& ActionMenuBui
 {
 	TArray<UFlowNodeBase*> FilteredNodes = GetFilteredPlaceableNodesOrAddOns(EditedFlowAsset, NativeFlowNodes, BlueprintFlowNodes);
 
-	for (const UFlowNodeBase* FlowNodeBase : FilteredNodes)
+	const UFlowGraphSettings& FlowGraphSettings = *UFlowGraphSettings::Get();
+	for (const UFlowNodeBase* FlowNode : FilteredNodes)
 	{
-		if ((CategoryName.IsEmpty() || CategoryName.Equals(FlowNodeBase->GetNodeCategory())) && !UFlowGraphSettings::Get()->NodesHiddenFromPalette.Contains(FlowNodeBase->GetClass()))
+		if ((CategoryName.IsEmpty() || CategoryName.Equals(FlowNode->GetNodeCategory())) && !FlowGraphSettings.NodesHiddenFromPalette.Contains(FlowNode->GetClass()))
 		{
-			const UFlowNode* FlowNode = CastChecked<UFlowNode>(FlowNodeBase);
-			TSharedPtr<FFlowGraphSchemaAction_NewNode> NewNodeAction(new FFlowGraphSchemaAction_NewNode(FlowNode));
+			TSharedPtr<FFlowGraphSchemaAction_NewNode> NewNodeAction(new FFlowGraphSchemaAction_NewNode(FlowNode, FlowGraphSettings));
 			ActionMenuBuilder.AddAction(NewNodeAction);
 		}
 	}

@@ -38,21 +38,23 @@ UFlowGraph::UFlowGraph(const FObjectInitializer& ObjectInitializer)
 	}
 }
 
-UEdGraph* UFlowGraph::CreateGraph(UFlowAsset* InFlowAsset)
+void UFlowGraph::CreateGraph(UFlowAsset* InFlowAsset)
 {
 	return CreateGraph(InFlowAsset, UFlowGraphSchema::StaticClass());
 }
 
-UEdGraph* UFlowGraph::CreateGraph(UFlowAsset* InFlowAsset, TSubclassOf<UFlowGraphSchema> FlowSchema)
+void UFlowGraph::CreateGraph(UFlowAsset* InFlowAsset, TSubclassOf<UFlowGraphSchema> FlowSchema)
 {
-	check(FlowSchema);
-	UEdGraph* NewGraph = CastChecked<UFlowGraph>(FBlueprintEditorUtils::CreateNewGraph(InFlowAsset, NAME_None, StaticClass(), FlowSchema));
+	UFlowGraph* NewGraph = CastChecked<UFlowGraph>(FBlueprintEditorUtils::CreateNewGraph(InFlowAsset, NAME_None, StaticClass(), FlowSchema));
 	NewGraph->bAllowDeletion = false;
 
-	InFlowAsset->FlowGraph = NewGraph;
-	NewGraph->GetSchema()->CreateDefaultNodesForGraph(*NewGraph);
+	// Ensure we mapped relation between UFlowNode and UFlowGraphNode classes
+	// Otherwise generating graph wouldn't assign proper UFlowGraphNode class to default nodes generated below
+	// Issue only occurred if somebody would generate graph programatically without opening Flow Asset editor at least once
+	UFlowGraphSchema::GatherNodes();
 
-	return NewGraph;
+	InFlowAsset->FlowGraph = NewGraph;
+	InFlowAsset->FlowGraph->GetSchema()->CreateDefaultNodesForGraph(*InFlowAsset->FlowGraph);
 }
 
 void UFlowGraph::RefreshGraph()
@@ -119,8 +121,8 @@ void UFlowGraph::RecursivelyRefreshAddOns(UFlowGraphNode& FromFlowGraphNode)
 				TEXT("Missing AddOn detected for node %s (parent %s)"),
 				*FromFlowNodeBase->GetName(),
 				FromFlowGraphNode.GetParentNode() ?
-				*FromFlowGraphNode.GetParentNode()->GetName() :
-				TEXT("<null>"));
+					*FromFlowGraphNode.GetParentNode()->GetName() :
+					TEXT("<null>"));
 
 			continue;
 		}
@@ -483,7 +485,4 @@ void UFlowGraph::RecursivelySetupAllFlowGraphNodesForEditing(UFlowGraphNode& Fro
 		}
 	}
 }
-
-
-
 

@@ -104,6 +104,7 @@ public:
 	virtual void GetNodeContextMenuActions(class UToolMenu* Menu, class UGraphNodeContextMenuContext* Context) const override;
 	virtual bool CanUserDeleteNode() const override;
 	virtual bool CanDuplicateNode() const override;
+	virtual bool CanPasteHere( const UEdGraph* TargetGraph ) const override;
 	virtual TSharedPtr<SGraphNode> CreateVisualWidget() override;
 	virtual FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
 	virtual FLinearColor GetNodeTitleColor() const override;
@@ -117,6 +118,9 @@ public:
 	bool CanAcceptSubNodeAsChild(const UFlowGraphNode& OtherSubNode, const TSet<const UEdGraphNode*>& AllRootSubNodesToPaste, FString* OutReasonString = nullptr) const;
 
 	bool IsAncestorNode(const UFlowGraphNode& OtherNode) const;
+
+protected:
+	void RebuildPinArraysOnLoad();
 
 //////////////////////////////////////////////////////////////////////////
 // Utils
@@ -156,6 +160,9 @@ public:
 
 	void ValidateGraphNode(FFlowMessageLog& MessageLog) const;
 
+protected:
+	bool ShouldReconstructNode() const;
+	
 //////////////////////////////////////////////////////////////////////////
 // Pins
 
@@ -185,9 +192,11 @@ public:
 	// Call node and graph updates manually, if using bBatchRemoval
 	void RemoveInstancePin(UEdGraphPin* Pin);
 
+protected:
 	// Create pins from the context asset, i.e. Sequencer events
-	void RefreshContextPins(const bool bReconstructNode);
-
+	void RefreshContextPins();
+	
+public:
 	// UEdGraphNode
 	virtual void GetPinHoverText(const UEdGraphPin& Pin, FString& HoverTextOut) const override;
 	// --
@@ -219,6 +228,7 @@ private:
 
 public:
 	FFlowGraphNodeEvent OnSignalModeChanged;
+	FFlowGraphNodeEvent OnReconstructNodeCompleted;
 	
 	// Pin activation forced by user during PIE
 	virtual void ForcePinActivation(const FEdGraphPinReference PinReference) const;
@@ -296,7 +306,7 @@ protected:
 
 	void LogError(const FString& MessageToLog, const UFlowNodeBase* FlowNodeBase) const;
 
-	bool HavePinsChanged();
+	bool HavePinsChanged() const;
 
 public:
 	
