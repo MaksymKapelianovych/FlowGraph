@@ -14,7 +14,6 @@
 
 #include "LevelSequence.h"
 #include "LevelSequenceActor.h"
-#include "Runtime/Launch/Resources/Version.h"
 #include "VisualLogger/VisualLogger.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(FlowNode_PlayLevelSequence)
@@ -66,11 +65,7 @@ TArray<FFlowPin> UFlowNode_PlayLevelSequence::GetContextOutputs()
 	Sequence = Sequence.LoadSynchronous();
 	if (Sequence && Sequence->GetMovieScene())
 	{
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION < 2
-		for (const UMovieSceneTrack* Track : Sequence->GetMovieScene()->GetMasterTracks())
-#else
 		for (const UMovieSceneTrack* Track : Sequence->GetMovieScene()->GetTracks())
-#endif
 		{
 			if (Track->GetClass() == UMovieSceneFlowTrack::StaticClass())
 			{

@@ -16,13 +16,11 @@
 #include "Internationalization/Text.h"
 #include "PropertyEditorModule.h"
 #include "SBlueprintDiff.h"
+#include "SDetailsSplitter.h"
 #include "SlateOptMacros.h"
 #include "Subsystems/AssetEditorSubsystem.h"
 #include "Widgets/Layout/SSpacer.h"
 
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION > 2
-#include "SDetailsSplitter.h"
-#endif
 
 #define LOCTEXT_NAMESPACE "SFlowDiff"
 
@@ -701,7 +699,6 @@ SFlowDiff::FDiffControl SFlowDiff::GenerateDetailsPanel()
 	const TSharedPtr<FFlowAssetDiffControl> NewDiffControl = MakeShared<FFlowAssetDiffControl>(PanelOld.FlowAsset, PanelNew.FlowAsset, FOnDiffEntryFocused::CreateRaw(this, &SFlowDiff::SetCurrentMode, DetailsMode));
 	NewDiffControl->GenerateTreeEntries(PrimaryDifferencesList, RealDifferences);
 
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
 	const TSharedRef<SDetailsSplitter> Splitter = SNew(SDetailsSplitter);
 	if (PanelOld.FlowAsset)
 	{
@@ -721,27 +718,11 @@ SFlowDiff::FDiffControl SFlowDiff::GenerateDetailsPanel()
 			.DifferencesWithRightPanel(NewDiffControl.ToSharedRef(), &FFlowAssetDiffControl::GetDifferencesWithRight, Cast<UObject>(PanelOld.FlowAsset))
 		);
 	}
-#endif	
 
-	SFlowDiff::FDiffControl Ret;
+	FDiffControl Ret;
 	Ret.Widget = SNullWidget::NullWidget;
 	Ret.DiffControl = NewDiffControl;
-
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION < 3
-	Ret.Widget = SNew(SSplitter)
-		.PhysicalSplitterHandleSize(10.0f)
-		+ SSplitter::Slot()
-		.Value(0.5f)
-		[
-			NewDiffControl->OldDetailsWidget()
-		]
-		+ SSplitter::Slot()
-		.Value(0.5f)
-		[
-			NewDiffControl->NewDetailsWidget()
-		];
-#endif
-
+	
 	return Ret;
 }
 
