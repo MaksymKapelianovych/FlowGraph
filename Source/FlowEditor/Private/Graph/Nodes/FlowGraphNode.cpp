@@ -523,7 +523,28 @@ bool UFlowGraphNode::CanUserDeleteNode() const
 
 bool UFlowGraphNode::CanDuplicateNode() const
 {
-	return FlowNode ? FlowNode->bCanDuplicate : Super::CanDuplicateNode();
+	if (FlowNode)
+	{
+		return FlowNode->bCanDuplicate;
+	}
+
+	// support code paths calling this method on CDO, where there's no Flow Node Instance
+	if (AssignedNodeClasses.Num() > 0)
+	{
+		// we simply allow action if any Assigned Node Class accepts it, as the action is disallowed in special node likes StartNode
+		for (const UClass* Class : AssignedNodeClasses)
+		{
+			const UFlowNode* NodeDefaults = Class->GetDefaultObject<UFlowNode>();
+			if (NodeDefaults && NodeDefaults->bCanDuplicate)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	return true;
 }
 
 TSharedPtr<SGraphNode> UFlowGraphNode::CreateVisualWidget()
