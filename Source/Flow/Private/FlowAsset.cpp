@@ -727,7 +727,7 @@ void UFlowAsset::TriggerCustomOutput(const FName& EventName)
 	{
 		if (UFlowComponent* FlowComponent = Cast<UFlowComponent>(GetOwner()))
 		{
-			FlowComponent->OnTriggerRootFlowOutputEventDispatcher(this, EventName);
+			FlowComponent->DispatchRootFlowCustomEvent(this, EventName);
 		}
 	}
 }
