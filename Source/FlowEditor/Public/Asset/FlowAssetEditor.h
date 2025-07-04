@@ -124,6 +124,7 @@ protected:
 	virtual void BindToolbarCommands();
 	
 	virtual void RefreshAsset();
+	virtual void RefreshDetails();
 
 private:
 	void ValidateAsset_Internal();

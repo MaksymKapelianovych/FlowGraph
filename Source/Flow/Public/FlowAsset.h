@@ -69,6 +69,7 @@ public:
 // Graph
 
 #if WITH_EDITOR
+public:
 	friend class UFlowGraph;
 
 	// UObject
@@ -78,13 +79,16 @@ public:
 	virtual void PostLoad() override;
 	// --
 
+public:
+	FSimpleDelegate OnDetailsRefreshRequested;
+
+	static FString ValidationError_NodeClassNotAllowed;
+	static FString ValidationError_NullNodeInstance;
+
 	virtual EDataValidationResult ValidateAsset(FFlowMessageLog& MessageLog);
 
 	// Returns whether the node class is allowed in this flow asset
 	bool IsNodeClassAllowed(const UClass* FlowNodeClass, FText* OutOptionalFailureReason = nullptr) const;
-
-	static FString ValidationError_NodeClassNotAllowed;
-	static FString ValidationError_NullNodeInstance;
 
 protected:
 	bool CanFlowNodeClassBeUsedByFlowAsset(const UClass& FlowNodeClass) const;
