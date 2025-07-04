@@ -312,8 +312,6 @@ void UFlowAsset::HarvestNodeConnections(UFlowNode* TargetNode)
 			Modify();
 		}
 	}
-
-	bool bAnyNodeDirty = false;
 	
 	for (UFlowNode* Node : TargetNodes)
 	{
@@ -334,11 +332,8 @@ void UFlowAsset::HarvestNodeConnections(UFlowNode* TargetNode)
 		}
 
 		// This check exists to ensure that we don't mark graph dirty, if none of connections changed
-		// Optimization: we need check it only until the first node would be marked dirty, as this already marks Flow Asset package dirty
-		if (bAnyNodeDirty == false)
 		{
 			const TMap<FName, FConnectedPin>& OldConnections = Node->Connections;
-			
 			if (FoundConnections.Num() != OldConnections.Num())
 			{
 				bNodeDirty = true;
@@ -364,7 +359,7 @@ void UFlowAsset::HarvestNodeConnections(UFlowNode* TargetNode)
 			}
 		}
 
-		if (bNodeDirty || bAnyNodeDirty)
+		if (bNodeDirty)
 		{
 			Node->SetFlags(RF_Transactional);
 			Node->Modify();
