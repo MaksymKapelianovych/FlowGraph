@@ -185,7 +185,8 @@ FString UFlowNode::GetNodeDescription() const
 {
 	return K2_GetNodeDescription();
 }
-#endif
+
+#endif // WITH_EDITOR
 
 UFlowAsset* UFlowNode::GetFlowAsset() const
 {

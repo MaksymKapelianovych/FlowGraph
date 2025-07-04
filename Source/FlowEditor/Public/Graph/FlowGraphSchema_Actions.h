@@ -26,14 +26,12 @@ struct FLOWEDITOR_API FFlowGraphSchemaAction_NewNode : public FEdGraphSchemaActi
 	virtual FName GetTypeId() const override { return StaticGetTypeId(); }
 
 	FFlowGraphSchemaAction_NewNode()
-		: FEdGraphSchemaAction()
-		, NodeClass(nullptr)
+		: NodeClass(nullptr)
 	{
 	}
 
-	FFlowGraphSchemaAction_NewNode(UClass* Node)
-		: FEdGraphSchemaAction()
-		, NodeClass(Node)
+	FFlowGraphSchemaAction_NewNode(UClass* InNodeClass)
+		: NodeClass(InNodeClass)
 	{
 	}
 
