@@ -9,7 +9,7 @@
 #include "Graph/FlowGraphSettings.h"
 #include "Utils/SLevelEditorFlow.h"
 #include "MovieScene/FlowTrackEditor.h"
-#include "Nodes/AssetTypeActions_FlowNodeBlueprint.h"
+#include "Nodes/AssetDefinition_FlowNodeBlueprint.h"
 #include "Pins/SFlowInputPinHandle.h"
 #include "Pins/SFlowOutputPinHandle.h"
 
@@ -125,7 +125,7 @@ void FFlowEditorModule::RegisterAssets()
 		}
 	}
 
-	const TSharedRef<IAssetTypeActions> FlowNodeActions = MakeShareable(new FAssetTypeActions_FlowNodeBlueprint());
+	const TSharedRef<IAssetTypeActions> FlowNodeActions = MakeShareable(new FAssetDefinition_FlowNodeBlueprint());
 	RegisteredAssetActions.Add(FlowNodeActions);
 	AssetTools.RegisterAssetTypeActions(FlowNodeActions);
 }
