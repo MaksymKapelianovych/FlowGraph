@@ -4,7 +4,7 @@
 
 #include "FlowPin.generated.h"
 
-USTRUCT(BlueprintType)
+USTRUCT(BlueprintType, meta = (HasNativeMake = "/Script/Flow.FlowDataPinBlueprintLibrary.MakeStruct", HasNativeBreak = "/Script/Flow.FlowDataPinBlueprintLibrary.BreakStruct"))
 struct FLOW_API FFlowPin
 {
 	GENERATED_BODY()
