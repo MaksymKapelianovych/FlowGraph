@@ -486,7 +486,7 @@ bool UFlowNode::IsInputConnected(const FName& PinName) const
 {
 	if (GetFlowAsset())
 	{
-		for (const TPair<FGuid, UFlowNode*>& Pair : GetFlowAsset()->Nodes)
+		for (const TPair<FGuid, UFlowNode*>& Pair : GetFlowAsset()->GetNodes())
 		{
 			if (Pair.Value)
 			{
