@@ -169,7 +169,13 @@ bool UFlowGraphSchema::TryCreateConnection(UEdGraphPin* PinA, UEdGraphPin* PinB)
 
 	if (bModified)
 	{
-		PinA->GetOwningNode()->GetGraph()->NotifyGraphChanged();
+		UFlowGraphNode* FlowGraphNodeA = Cast<UFlowGraphNode>(PinA->GetOwningNode());
+		UFlowGraphNode* FlowGraphNodeB = Cast<UFlowGraphNode>(PinB->GetOwningNode());
+
+		UEdGraph* EdGraph = FlowGraphNodeA->GetGraph();
+
+		EdGraph->NotifyNodeChanged(FlowGraphNodeA);
+		EdGraph->NotifyNodeChanged(FlowGraphNodeB);
 	}
 
 	return bModified;
@@ -222,24 +228,45 @@ FText UFlowGraphSchema::GetPinDisplayName(const UEdGraphPin* Pin) const
 void UFlowGraphSchema::BreakNodeLinks(UEdGraphNode& TargetNode) const
 {
 	Super::BreakNodeLinks(TargetNode);
-
-	TargetNode.GetGraph()->NotifyGraphChanged();
 }
 
 void UFlowGraphSchema::BreakPinLinks(UEdGraphPin& TargetPin, bool bSendsNodeNotification) const
 {
 	const FScopedTransaction Transaction(LOCTEXT("GraphEd_BreakPinLinks", "Break Pin Links"));
 
-	Super::BreakPinLinks(TargetPin, bSendsNodeNotification);
+	TArray<UEdGraphPin*> CachedLinkedTo = TargetPin.LinkedTo;
 
+	UFlowGraphNode* OwningFlowGraphNode = Cast<UFlowGraphNode>(TargetPin.GetOwningNodeUnchecked());
+	UEdGraph* EdGraph = (OwningFlowGraphNode) ? OwningFlowGraphNode->GetGraph() : nullptr;
+
+	Super::BreakPinLinks(TargetPin, bSendsNodeNotification);
+	
 	if (TargetPin.bOrphanedPin)
 	{
-		// this calls NotifyGraphChanged()
-		Cast<UFlowGraphNode>(TargetPin.GetOwningNode())->RemoveOrphanedPin(&TargetPin);
+		// this calls NotifyNodeChanged()
+		OwningFlowGraphNode->RemoveOrphanedPin(&TargetPin);
 	}
 	else if (bSendsNodeNotification)
 	{
-		TargetPin.GetOwningNode()->GetGraph()->NotifyGraphChanged();
+		if (IsValid(EdGraph))
+		{
+			EdGraph->NotifyNodeChanged(OwningFlowGraphNode);
+		}
+	}
+
+	for (UEdGraphPin* OtherPin : CachedLinkedTo)
+	{
+		UFlowGraphNode* OtherOwningFlowGraphNode = Cast<UFlowGraphNode>(OtherPin->GetOwningNodeUnchecked());
+		
+		if (OtherPin->bOrphanedPin)
+		{
+			// this calls NotifyNodeChanged()
+			OtherOwningFlowGraphNode->RemoveOrphanedPin(OtherPin);
+		}
+		else if (bSendsNodeNotification)
+		{
+			EdGraph->NotifyNodeChanged(OtherOwningFlowGraphNode);
+		}
 	}
 }
 

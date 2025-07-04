@@ -13,6 +13,7 @@
 #include "Nodes/Route/FlowNode_SubGraph.h"
 
 #include "EdGraphUtilities.h"
+#include "GraphEditAction.h"
 #include "Framework/Commands/GenericCommands.h"
 #include "GraphEditorActions.h"
 #include "HAL/PlatformApplicationMisc.h"
@@ -106,9 +107,9 @@ void SFlowGraphEditor::BindGraphCommands()
 	                               FCanExecuteAction::CreateSP(this, &SFlowGraphEditor::CanDuplicateNodes));
 
 	// Pin commands
-	CommandList->MapAction(FlowGraphCommands.RefreshContextPins,
-	                               FExecuteAction::CreateSP(this, &SFlowGraphEditor::RefreshContextPins),
-	                               FCanExecuteAction::CreateSP(this, &SFlowGraphEditor::CanRefreshContextPins));
+	CommandList->MapAction(FlowGraphCommands.ReconstructNode,
+								   FExecuteAction::CreateSP(this, &SFlowGraphEditor::ReconstructNode),
+								   FCanExecuteAction::CreateSP(this, &SFlowGraphEditor::CanReconstructNode));
 
 	CommandList->MapAction(FlowGraphCommands.AddInput,
 	                               FExecuteAction::CreateSP(this, &SFlowGraphEditor::AddInput),
@@ -750,15 +751,15 @@ void SFlowGraphEditor::OnNodeTitleCommitted(const FText& NewText, ETextCommit::T
 	}
 }
 
-void SFlowGraphEditor::RefreshContextPins() const
+void SFlowGraphEditor::ReconstructNode() const
 {
 	for (UFlowGraphNode* SelectedNode : GetSelectedFlowNodes())
 	{
-		SelectedNode->RefreshContextPins(true);
+		SelectedNode->ReconstructNode();
 	}
 }
 
-bool SFlowGraphEditor::CanRefreshContextPins() const
+bool SFlowGraphEditor::CanReconstructNode() const
 {
 	if (CanEdit() && GetSelectedFlowNodes().Num() == 1)
 	{

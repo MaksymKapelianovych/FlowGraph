@@ -25,6 +25,9 @@ void FFlowGraphInterface::OnOutputTriggered(UEdGraphNode* GraphNode, const int32
 UFlowGraph::UFlowGraph(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
+	bLockUpdates = false;
+	bIsLoadingGraph = false;
+	
 	if (!UFlowAsset::GetFlowGraphInterface().IsValid())
 	{
 		UFlowAsset::SetFlowGraphInterface(MakeShared<FFlowGraphInterface>());
@@ -50,6 +53,9 @@ void UFlowGraph::RefreshGraph()
 	// don't run fixup in PIE
 	if (GEditor && !GEditor->PlayWorld)
 	{
+		// Locking updates to the graph while we update it
+		bLockUpdates = true;
+		
 		// check if all Graph Nodes have expected, up-to-date type
 		CastChecked<UFlowGraphSchema>(GetSchema())->GatherNativeNodes();
 		for (const TPair<FGuid, UFlowNode*>& Node : GetFlowAsset()->GetNodes())
@@ -64,6 +70,8 @@ void UFlowGraph::RefreshGraph()
 				}
 			}
 		}
+
+		bLockUpdates = true;
 
 		// refresh nodes
 		TArray<UFlowGraphNode*> FlowGraphNodes;
@@ -85,4 +93,9 @@ void UFlowGraph::NotifyGraphChanged()
 UFlowAsset* UFlowGraph::GetFlowAsset() const
 {
 	return GetTypedOuter<UFlowAsset>();
+}
+
+bool UFlowGraph::IsLocked() const
+{
+	return bLockUpdates;
 }

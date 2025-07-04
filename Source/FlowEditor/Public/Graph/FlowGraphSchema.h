@@ -49,6 +49,12 @@ public:
 	virtual void ForceVisualizationCacheClear() const override;
 	// --
 
+	// FlowGraphSchema
+	
+	virtual bool ShouldAlwaysPurgeOnModification() const override { return false; }
+	
+	// --
+
 	static void UpdateGeneratedDisplayNames();
 	static void UpdateGeneratedDisplayName(UClass* NodeClass, bool bBatch = false);
 

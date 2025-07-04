@@ -21,6 +21,16 @@ class FLOWEDITOR_API UFlowGraph : public UEdGraph
 {
 	GENERATED_UCLASS_BODY()
 
+protected:
+	/** if set, graph modifications won't cause updates in internal tree structure
+	 *  flag allows freezing update during heavy changes like pasting new nodes 
+	 */
+	uint32 bLockUpdates : 1;
+
+	// is currently loading the Flow Graph (used to suppress some work during load)
+	uint32 bIsLoadingGraph : 1;
+
+public:
 	static void CreateGraph(UFlowAsset* InFlowAsset);
 	void RefreshGraph();
 
@@ -30,4 +40,8 @@ class FLOWEDITOR_API UFlowGraph : public UEdGraph
 
 	/** Returns the FlowAsset that contains this graph */
 	UFlowAsset* GetFlowAsset() const;
+
+	bool IsLocked() const;
+
+	bool IsLoadingGraph() const { return bIsLoadingGraph; }
 };

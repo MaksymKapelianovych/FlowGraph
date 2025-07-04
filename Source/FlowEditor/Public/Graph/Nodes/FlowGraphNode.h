@@ -11,6 +11,7 @@
 #include "Nodes/FlowPin.h"
 #include "FlowGraphNode.generated.h"
 
+class UFlowGraph;
 class UEdGraphSchema;
 class UFlowNode;
 
@@ -32,6 +33,7 @@ private:
 	TObjectPtr<UFlowNode> FlowNode;
 
 	bool bBlueprintCompilationPending;
+	bool bIsReconstructingNode;
 	bool bNeedsFullReconstruction;
 	static bool bFlowAssetsLoaded;
 
@@ -109,10 +111,15 @@ public:
 	virtual FText GetTooltipText() const override;
 	// --
 
+protected:
+	void RebuildPinArraysOnLoad();
+
 //////////////////////////////////////////////////////////////////////////
 // Utils
 
 public:
+	UFlowGraph* GetFlowGraph() const;
+	
 	// Short summary of node's content
 	FString GetNodeDescription() const;
 
@@ -139,6 +146,9 @@ public:
 	virtual void JumpToDefinition() const override;
 	// --
 
+protected:
+	bool ShouldReconstructNode() const;
+	
 //////////////////////////////////////////////////////////////////////////
 // Pins
 
@@ -171,10 +181,13 @@ public:
 	// Call node and graph updates manually, if using bBatchRemoval
 	void RemoveInstancePin(UEdGraphPin* Pin);
 
+protected:
 	// Create pins from the context asset, i.e. Sequencer events
-	void RefreshContextPins(const bool bReconstructNode);
-
+	void RefreshContextPins();
+	
+public:
 	// UEdGraphNode
+	virtual void NodeConnectionListChanged() override;
 	virtual void GetPinHoverText(const UEdGraphPin& Pin, FString& HoverTextOut) const override;
 	// --
 
@@ -197,6 +210,7 @@ private:
 
 public:
 	FFlowGraphNodeEvent OnSignalModeChanged;
+	FFlowGraphNodeEvent OnReconstructNodeCompleted;
 	
 	// Pin activation forced by user during PIE
 	virtual void ForcePinActivation(const FEdGraphPinReference PinReference) const;
@@ -204,6 +218,7 @@ public:
 	// Pass-through forced by designer, set per node instance
 	virtual void SetSignalMode(const EFlowSignalMode Mode);
 
+	bool HavePinsChanged() const;
 	virtual EFlowSignalMode GetSignalMode() const;
 	virtual bool CanSetSignalMode(const EFlowSignalMode Mode) const;
 };

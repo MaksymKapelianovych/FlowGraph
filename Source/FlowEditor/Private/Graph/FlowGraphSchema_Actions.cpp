@@ -67,7 +67,7 @@ UFlowGraphNode* FFlowGraphSchemaAction_NewNode::CreateNode(UEdGraph* ParentGraph
 	NewGraphNode->SetNodeTemplate(FlowNode);
 
 	// create pins and connections
-	NewGraphNode->AllocateDefaultPins();
+	NewGraphNode->ReconstructNode();
 	NewGraphNode->AutowireNewNode(FromPin);
 
 	// set position
@@ -76,7 +76,7 @@ UFlowGraphNode* FFlowGraphSchemaAction_NewNode::CreateNode(UEdGraph* ParentGraph
 
 	// call notifies
 	NewGraphNode->PostPlacedNewNode();
-	ParentGraph->NotifyGraphChanged();
+	ParentGraph->NotifyNodeChanged(NewGraphNode);
 
 	FlowAsset->PostEditChange();
 
