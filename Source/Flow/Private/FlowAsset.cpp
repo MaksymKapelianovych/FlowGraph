@@ -113,14 +113,14 @@ EDataValidationResult UFlowAsset::ValidateAsset(FFlowMessageLog& MessageLog)
 			FText FailureReason;
 			if (!IsNodeClassAllowed(Node.Value->GetClass(), &FailureReason))
 			{
-				const FString ErrorMsg = 
-					FailureReason.IsEmpty() ?
-						FString::Format(*ValidationError_NodeClassNotAllowed, {*Node.Value->GetClass()->GetName()}) :
-						FailureReason.ToString();
+				const FString ErrorMsg =
+					FailureReason.IsEmpty()
+						? FString::Format(*ValidationError_NodeClassNotAllowed, {*Node.Value->GetClass()->GetName()})
+						: FailureReason.ToString();
 
 				MessageLog.Error(*ErrorMsg, Node.Value);
 			}
-			
+
 			Node.Value->ValidationLog.Messages.Empty();
 			if (Node.Value->ValidateNode() == EDataValidationResult::Invalid)
 			{
@@ -757,21 +757,23 @@ void UFlowAsset::FinishNode(UFlowNode* Node)
 			if (NodeOwningThisAssetInstance.IsValid())
 			{
 				NodeOwningThisAssetInstance.Get()->TriggerFirstOutput(true);
+				return;
 			}
 			else
 			{
-				//If this is a root instance finish root flows else finish locally 
-				TSet<UFlowAsset*> RootFlowInstances = GetFlowSubsystem()->GetRootInstancesByOwner(Owner.Get());
-
-				if (RootFlowInstances.Contains(this))
+				// if this instance is a Root Flow, we need to deregister it from the subsystem first
+				if (Owner.IsValid())
 				{
-					GetFlowSubsystem()->FinishRootFlow(Owner.Get(), TemplateAsset, EFlowFinishPolicy::Keep);
-				}
-				else
-				{
-					FinishFlow(EFlowFinishPolicy::Keep);
+					const TSet<UFlowAsset*>& RootFlowInstances = GetFlowSubsystem()->GetRootInstancesByOwner(Owner.Get());
+					if (RootFlowInstances.Contains(this))
+					{
+						GetFlowSubsystem()->FinishRootFlow(Owner.Get(), TemplateAsset, EFlowFinishPolicy::Keep);
+						return;
+					}
 				}
 			}
+
+			FinishFlow(EFlowFinishPolicy::Keep);
 		}
 	}
 }

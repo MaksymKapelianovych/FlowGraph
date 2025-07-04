@@ -95,6 +95,7 @@ protected:
 
 	UFlowAsset* CreateFlowInstance(const TWeakObjectPtr<UObject> Owner, TSoftObjectPtr<UFlowAsset> FlowAsset, FString NewInstanceName = FString());
 
+public:	
 	virtual void AddInstancedTemplate(UFlowAsset* Template);
 	virtual void RemoveInstancedTemplate(UFlowAsset* Template);
 

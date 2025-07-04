@@ -34,12 +34,12 @@ void UFlowComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(UFlowComponent, AddedIdentityTags);
-	DOREPLIFETIME(UFlowComponent, RemovedIdentityTags);
+	DOREPLIFETIME(ThisClass, AddedIdentityTags);
+	DOREPLIFETIME(ThisClass, RemovedIdentityTags);
 
-	DOREPLIFETIME(UFlowComponent, RecentlySentNotifyTags);
-	DOREPLIFETIME(UFlowComponent, NotifyTagsFromGraph);
-	DOREPLIFETIME(UFlowComponent, NotifyTagsFromAnotherComponent);
+	DOREPLIFETIME(ThisClass, RecentlySentNotifyTags);
+	DOREPLIFETIME(ThisClass, NotifyTagsFromGraph);
+	DOREPLIFETIME(ThisClass, NotifyTagsFromAnotherComponent);
 }
 
 void UFlowComponent::BeginPlay()
