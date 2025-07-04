@@ -44,7 +44,13 @@ public:
 	virtual int32 GetNodeSelectionCount(const UEdGraph* Graph) const override;
 	virtual TSharedPtr<FEdGraphSchemaAction> GetCreateCommentAction() const override;
 	virtual void OnPinConnectionDoubleCicked(UEdGraphPin* PinA, UEdGraphPin* PinB, const FVector2D& GraphPosition) const override;
+	virtual bool IsCacheVisualizationOutOfDate(int32 InVisualizationCacheID) const override;
+	virtual int32 GetCurrentVisualizationCacheID() const override;
+	virtual void ForceVisualizationCacheClear() const override;
 	// --
+
+	static void UpdateGeneratedDisplayNames();
+	static void UpdateGeneratedDisplayName(UClass* NodeClass, bool bBatch = false);
 
 	static TArray<TSharedPtr<FString>> GetFlowNodeCategories();
 	static UClass* GetAssignedGraphNodeClass(const UClass* FlowNodeClass);
@@ -69,10 +75,15 @@ private:
 	static void OnAssetAdded(const FAssetData& AssetData);
 	static void AddAsset(const FAssetData& AssetData, const bool bBatch);
 	static void OnAssetRemoved(const FAssetData& AssetData);
+	static void OnAssetRenamed(const FAssetData& AssetData, const FString& OldObjectPath);
 
 public:
 	static FFlowGraphSchemaRefresh OnNodeListChanged;
 	static UBlueprint* GetPlaceableNodeBlueprint(const FAssetData& AssetData);
 
 	static const UFlowAsset* GetAssetClassDefaults(const UEdGraph* Graph);
+	
+private:
+	// ID for checking dirty status of node titles against
+	static int32 CurrentCacheRefreshID;
 };
