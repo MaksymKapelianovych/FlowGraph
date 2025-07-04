@@ -233,18 +233,19 @@ bool UFlowAsset::CanFlowAssetReferenceFlowNode(const UClass& FlowNodeClass, FTex
 	{
 		return false;
 	}
-
-	FAssetData FlowNodeAssetData(&FlowNodeClass);
-
+	
 	FAssetReferenceFilterContext AssetReferenceFilterContext;
-	AssetReferenceFilterContext.ReferencingAssets.Add(FAssetData(this));
+	AssetReferenceFilterContext.AddReferencingAsset(FAssetData(this));
 
 	// Confirm plugin reference restrictions are being respected
-	TSharedPtr<IAssetReferenceFilter> FlowAssetReferenceFilter = GEditor->MakeAssetReferenceFilter(AssetReferenceFilterContext);
-	if (FlowAssetReferenceFilter.IsValid() &&
-		!FlowAssetReferenceFilter->PassesFilter(FlowNodeAssetData, OutOptionalFailureReason))
+	const TSharedPtr<IAssetReferenceFilter> FlowAssetReferenceFilter = GEditor->MakeAssetReferenceFilter(AssetReferenceFilterContext);
+	if (FlowAssetReferenceFilter.IsValid())
 	{
-		return false;
+		const FAssetData FlowNodeAssetData(&FlowNodeClass);
+		if (!FlowAssetReferenceFilter->PassesFilter(FlowNodeAssetData, OutOptionalFailureReason))
+		{
+			return false;
+		}
 	}
 
 	return true;
