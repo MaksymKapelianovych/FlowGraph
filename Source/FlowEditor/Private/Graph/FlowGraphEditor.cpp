@@ -534,14 +534,12 @@ bool SFlowGraphEditor::CanDeleteNodes() const
 		{
 			if (const UEdGraphNode* Node = Cast<UEdGraphNode>(*NodeIt))
 			{
-				if (!Node->CanUserDeleteNode())
+				if (Node->CanUserDeleteNode())
 				{
-					return false;
+					return true;
 				}
 			}
 		}
-
-		return SelectedNodes.Num() > 0;
 	}
 
 	return false;

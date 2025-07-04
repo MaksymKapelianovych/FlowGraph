@@ -43,7 +43,9 @@ UFlowGraphNode::UFlowGraphNode(const FObjectInitializer& ObjectInitializer)
 
 void UFlowGraphNode::SetNodeTemplate(UFlowNode* InFlowNode)
 {
+	ensure(InFlowNode);
 	FlowNode = InFlowNode;
+	FlowNodeClass = InFlowNode->GetClass();
 }
 
 const UFlowNode* UFlowGraphNode::GetNodeTemplate() const
@@ -115,24 +117,23 @@ void UFlowGraphNode::PostPlacedNewNode()
 
 	// NOTE - NodeInstance can be already spawned by paste operation, don't override it
 
-	/*if (NodeInstanceClass.IsPending())
+	if (FlowNodeClass.IsPending())
 	{
-		NodeInstanceClass.LoadSynchronous();
+		FlowNodeClass.LoadSynchronous();
 	}
 
-	UClass* NodeClass = NodeInstanceClass.Get();
-	if (NodeClass && (NodeInstance == nullptr))
+	UClass* NodeClass = FlowNodeClass.Get();
+	if (NodeClass && (FlowNode == nullptr))
 	{
 		UEdGraph* MyGraph = GetGraph();
 		UObject* GraphOwner = MyGraph ? MyGraph->GetOuter() : nullptr;
 		if (GraphOwner)
 		{
-			NodeInstance = Cast<UFlowNodeBase>(NewObject<UObject>(GraphOwner, NodeClass));
-			NodeInstance->SetFlags(RF_Transactional);
-
-			InitializeInstance();
+			FlowNode = Cast<UFlowNode>(NewObject<UObject>(GraphOwner, NodeClass));
+			FlowNode->SetFlags(RF_Transactional);
+			FlowNode->SetGraphNode(this);
 		}
-	}*/
+	}
 }
 
 void UFlowGraphNode::PrepareForCopying()
@@ -566,6 +567,17 @@ bool UFlowGraphNode::CanDuplicateNode() const
 	}
 
 	return true;
+}
+
+bool UFlowGraphNode::CanPasteHere( const UEdGraph* TargetGraph ) const
+{
+	const UFlowGraph* FlowGraph = Cast<UFlowGraph>(TargetGraph);
+	if (FlowGraph == nullptr)
+	{
+		return false;
+	}
+	
+	return Super::CanPasteHere(TargetGraph) && FlowGraph->GetFlowAsset()->IsNodeClassAllowed(FlowNodeClass.Get());
 }
 
 TSharedPtr<SGraphNode> UFlowGraphNode::CreateVisualWidget()
