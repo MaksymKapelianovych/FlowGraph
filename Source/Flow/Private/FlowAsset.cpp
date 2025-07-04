@@ -573,7 +573,7 @@ void UFlowAsset::BroadcastDebuggerRefresh() const
 	RefreshDebuggerEvent.Broadcast();
 }
 
-void UFlowAsset::BroadcastRuntimeMessageAdded(const TSharedRef<FTokenizedMessage>& Message)
+void UFlowAsset::BroadcastRuntimeMessageAdded(const TSharedRef<FTokenizedMessage>& Message) const
 {
 	RuntimeMessageEvent.Broadcast(this, Message);
 }

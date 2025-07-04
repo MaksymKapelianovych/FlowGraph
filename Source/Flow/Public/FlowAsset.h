@@ -268,14 +268,14 @@ public:
 	FRefreshDebuggerEvent& OnDebuggerRefresh() { return RefreshDebuggerEvent; }
 	FRefreshDebuggerEvent RefreshDebuggerEvent;
 
-	DECLARE_EVENT_TwoParams(UFlowAsset, FRuntimeMessageEvent, UFlowAsset*, const TSharedRef<FTokenizedMessage>&);
+	DECLARE_EVENT_TwoParams(UFlowAsset, FRuntimeMessageEvent, const UFlowAsset*, const TSharedRef<FTokenizedMessage>&);
 
 	FRuntimeMessageEvent& OnRuntimeMessageAdded() { return RuntimeMessageEvent; }
 	FRuntimeMessageEvent RuntimeMessageEvent;
 
 private:
 	void BroadcastDebuggerRefresh() const;
-	void BroadcastRuntimeMessageAdded(const TSharedRef<FTokenizedMessage>& Message);
+	void BroadcastRuntimeMessageAdded(const TSharedRef<FTokenizedMessage>& Message) const;
 #endif
 
 //////////////////////////////////////////////////////////////////////////
