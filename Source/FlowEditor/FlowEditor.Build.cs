@@ -12,9 +12,7 @@ public class FlowEditor : ModuleRules
 		{
 			"EditorSubsystem",
 			"Flow",
-			"MessageLog",
-			"EngineAssetDefinitions", // For UAssetDefinition_Blueprint
-		
+			"MessageLog"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new[]
@@ -34,6 +32,7 @@ public class FlowEditor : ModuleRules
 			"EditorScriptingUtilities",
 			"EditorStyle",
 			"Engine",
+			"EngineAssetDefinitions",
 			"GraphEditor",
 			"InputCore",
 			"Json",

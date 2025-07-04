@@ -93,7 +93,7 @@ void UFlowGraphSchema::CreateDefaultNodesForGraph(UEdGraph& Graph) const
 	// Start node
 	CreateDefaultNode(Graph, AssetClassDefaults, UFlowNode_Start::StaticClass(), NodeOffset, AssetClassDefaults->bStartNodePlacedAsGhostNode);
 
-	// Add default nodes for all of the CustomInputs
+	// Add default nodes for all the CustomInputs
 	if (IsValid(AssetClassDefaults))
 	{
 		for (const FName& CustomInputName : AssetClassDefaults->CustomInputs)
@@ -106,7 +106,8 @@ void UFlowGraphSchema::CreateDefaultNodesForGraph(UEdGraph& Graph) const
 		}
 	}
 
-	CastChecked<UFlowGraph>(&Graph)->GetFlowAsset()->HarvestNodeConnections();
+	UFlowAsset* FlowAsset = CastChecked<UFlowGraph>(&Graph)->GetFlowAsset();
+	FlowAsset->HarvestNodeConnections();
 }
 
 UFlowGraphNode* UFlowGraphSchema::CreateDefaultNode(UEdGraph& Graph, const UFlowAsset* AssetClassDefaults, const TSubclassOf<UFlowNode>& NodeClass, const FVector2D& Offset, const bool bPlacedAsGhostNode)
