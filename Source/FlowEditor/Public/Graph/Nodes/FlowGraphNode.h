@@ -29,7 +29,7 @@ class FLOWEDITOR_API UFlowGraphNode : public UEdGraphNode
 
 private:
 	UPROPERTY(Instanced)
-	UFlowNode* FlowNode;
+	TObjectPtr<UFlowNode> FlowNode;
 
 	bool bBlueprintCompilationPending;
 	bool bNeedsFullReconstruction;

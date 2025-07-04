@@ -31,7 +31,7 @@ protected:
 
 	// Parameter object to pass to the function when called
 	UPROPERTY(EditAnywhere, Category = "Call Owner", Instanced)
-	UFlowOwnerFunctionParams* Params;
+	TObjectPtr<UFlowOwnerFunctionParams> Params;
 
 protected:
 	// UFlowNode

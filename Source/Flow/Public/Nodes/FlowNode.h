@@ -40,7 +40,7 @@ class FLOW_API UFlowNode : public UObject, public IVisualLoggerDebugSnapshotInte
 
 private:
 	UPROPERTY()
-	UEdGraphNode* GraphNode;
+	TObjectPtr<UEdGraphNode> GraphNode;
 
 #if WITH_EDITORONLY_DATA
 

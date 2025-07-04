@@ -124,7 +124,7 @@ void UFlowSubsystem::FinishRootFlow(UObject* Owner, UFlowAsset* TemplateAsset, c
 {
 	UFlowAsset* InstanceToFinish = nullptr;
 
-	for (TPair<UFlowAsset*, TWeakObjectPtr<UObject>>& RootInstance : RootInstances)
+	for (TPair<TObjectPtr<UFlowAsset>, TWeakObjectPtr<UObject>>& RootInstance : RootInstances)
 	{
 		if (Owner && Owner == RootInstance.Value.Get() && RootInstance.Key && RootInstance.Key->GetTemplateAsset() == TemplateAsset)
 		{
@@ -144,7 +144,7 @@ void UFlowSubsystem::FinishAllRootFlows(UObject* Owner, const EFlowFinishPolicy 
 {
 	TArray<UFlowAsset*> InstancesToFinish;
 
-	for (TPair<UFlowAsset*, TWeakObjectPtr<UObject>>& RootInstance : RootInstances)
+	for (TPair<TObjectPtr<UFlowAsset>, TWeakObjectPtr<UObject>>& RootInstance : RootInstances)
 	{
 		if (Owner && Owner == RootInstance.Value.Get() && RootInstance.Key)
 		{
