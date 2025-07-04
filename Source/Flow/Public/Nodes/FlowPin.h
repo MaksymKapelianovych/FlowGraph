@@ -4,7 +4,7 @@
 
 #include "FlowPin.generated.h"
 
-USTRUCT()
+USTRUCT(BlueprintType)
 struct FLOW_API FFlowPin
 {
 	GENERATED_BODY()
@@ -75,6 +75,13 @@ struct FLOW_API FFlowPin
 		, PinToolTip(InPinTooltip)
 	{
 	}
+	
+	FFlowPin(const FName& InPinName, const FText& InPinFriendlyName, const FString& InPinTooltip)
+		: PinName(InPinName)
+		, PinFriendlyName(InPinFriendlyName)
+		, PinToolTip(InPinTooltip)
+	{
+	}
 
 	FORCEINLINE bool IsValid() const
 	{
@@ -104,6 +111,28 @@ struct FLOW_API FFlowPin
 	friend uint32 GetTypeHash(const FFlowPin& FlowPin)
 	{
 		return GetTypeHash(FlowPin.PinName);
+	}
+};
+
+UCLASS()
+class UFlowDataPinBlueprintLibrary : public UBlueprintFunctionLibrary
+{
+	GENERATED_BODY()
+
+public:
+
+	UFUNCTION(BlueprintPure, Category = "FlowPin", Meta = (BlueprintThreadSafe, DisplayName = "Make Flow Pin"))
+	static FFlowPin MakeStruct(FName PinName, FText PinFriendlyName, FString PinToolTip)
+	{
+		return FFlowPin(PinName, PinFriendlyName, PinToolTip);
+	}
+
+	UFUNCTION(BlueprintPure, Category = "FlowPin", Meta = (BlueprintThreadSafe, DisplayName = "Break Flow Pin"))
+	static void BreakStruct(FFlowPin FlowPin, FName& OutPinName, FText& OutPinFriendlyName, FString& OutPinToolTip)
+	{
+		OutPinName = FlowPin.PinName;
+		OutPinFriendlyName = FlowPin.PinFriendlyName;
+		OutPinToolTip = FlowPin.PinToolTip;
 	}
 };
 
