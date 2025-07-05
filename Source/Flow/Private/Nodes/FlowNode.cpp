@@ -928,11 +928,12 @@ void UFlowNode::LogError(FString Message, const EFlowOnScreenMessageType OnScree
 			{
 				if (UViewportStatsSubsystem* StatsSubsystem = GetWorld()->GetSubsystem<UViewportStatsSubsystem>())
 				{
-					StatsSubsystem->AddDisplayDelegate([this, Message](FText& OutText, FLinearColor& OutColor)
+					StatsSubsystem->AddDisplayDelegate([WeakThis = TWeakObjectPtr(this), Message](FText& OutText, FLinearColor& OutColor)
 					{
 						OutText = FText::FromString(Message);
 						OutColor = FLinearColor::Red;
-						return IsValid(this) && ActivationState != EFlowNodeState::NeverActivated;
+
+						return WeakThis.IsValid() && WeakThis->GetActivationState() != EFlowNodeState::NeverActivated;
 					});
 				}
 			}
