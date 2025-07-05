@@ -124,10 +124,6 @@ void FFlowEditorModule::RegisterAssets()
 			FlowAssetCategory = AssetTools.RegisterAdvancedAssetCategory(FName(TEXT("Flow")), AssetCategoryText);
 		}
 	}
-
-	const TSharedRef<IAssetTypeActions> FlowNodeActions = MakeShareable(new FAssetDefinition_FlowNodeBlueprint());
-	RegisteredAssetActions.Add(FlowNodeActions);
-	AssetTools.RegisterAssetTypeActions(FlowNodeActions);
 }
 
 void FFlowEditorModule::UnregisterAssets()
