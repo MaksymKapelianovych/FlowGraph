@@ -12,6 +12,7 @@ public class FlowEditor : ModuleRules
 		{
 			"EditorSubsystem",
 			"Flow",
+			"FlowDebugger",
 			"MessageLog"
 		});
 

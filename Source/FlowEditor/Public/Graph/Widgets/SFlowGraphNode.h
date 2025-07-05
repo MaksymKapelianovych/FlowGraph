@@ -7,6 +7,8 @@
 
 #include "Graph/Nodes/FlowGraphNode.h"
 
+class UFlowDebuggerSubsystem;
+
 class FLOWEDITOR_API SFlowGraphPinExec : public SGraphPinExec
 {
 public:
@@ -26,7 +28,7 @@ public:
 
 	void Construct(const FArguments& InArgs, UFlowGraphNode* InNode);
 
-	~SFlowGraphNode();
+	virtual ~SFlowGraphNode() override;
 	
 protected:
 	// SNodePanel::SNode
@@ -35,7 +37,7 @@ protected:
 	virtual void GetOverlayBrushes(bool bSelected, const FVector2D WidgetSize, TArray<FOverlayBrushInfo>& Brushes) const override;
 	// --
 
-	virtual void GetPinBrush(const bool bLeftSide, const float WidgetWidth, const int32 PinIndex, const FFlowPinTrait& Breakpoint, TArray<FOverlayBrushInfo>& Brushes) const;
+	virtual void GetPinBrush(const bool bLeftSide, const float WidgetWidth, const int32 PinIndex, const struct FFlowBreakpoint* Breakpoint, TArray<FOverlayBrushInfo>& Brushes) const;
 
 	// SGraphNode
 	virtual void UpdateGraphNode() override;
@@ -70,4 +72,7 @@ private:
 
 protected:
 	UFlowGraphNode* FlowGraphNode = nullptr;
+
+	// Subsystem pointer cached to avoid retrieving it every frame
+	TWeakObjectPtr<UFlowDebuggerSubsystem> DebuggerSubsystem;
 };

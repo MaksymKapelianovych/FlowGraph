@@ -76,9 +76,6 @@ public:
 // Graph node
 
 public:
-	UPROPERTY()
-	FFlowPinTrait NodeBreakpoint;
-
 	// UEdGraphNode
 	virtual bool CanCreateUnderSpecifiedSchema(const UEdGraphSchema* Schema) const override;
 	virtual void AutowireNewNode(UEdGraphPin* FromPin) override;
@@ -100,7 +97,7 @@ public:
 
 	// variants of K2Node methods
 	void RewireOldPinsToNewPins(TArray<UEdGraphPin*>& InOldPins);
-	void ReconstructSinglePin(UEdGraphPin* NewPin, UEdGraphPin* OldPin);
+	static void ReconstructSinglePin(UEdGraphPin* NewPin, UEdGraphPin* OldPin);
 	// --
 
 	// UEdGraphNode
@@ -160,9 +157,6 @@ protected:
 public:
 	TArray<UEdGraphPin*> InputPins;
 	TArray<UEdGraphPin*> OutputPins;
-
-	UPROPERTY()
-	TMap<FEdGraphPinReference, FFlowPinTrait> PinBreakpoints;
 
 	void CreateInputPin(const FFlowPin& FlowPin, const int32 Index = INDEX_NONE);
 	void CreateOutputPin(const FFlowPin& FlowPin, const int32 Index = INDEX_NONE);
