@@ -19,7 +19,7 @@ class FLOW_API UFlowNode_SubGraph : public UFlowNode
 
 	static FFlowPin StartPin;
 	static FFlowPin FinishPin;
-	
+
 private:
 	UPROPERTY(EditAnywhere, Category = "Graph")
 	TSoftObjectPtr<UFlowAsset> Asset;
@@ -30,13 +30,13 @@ private:
 	 */
 	UPROPERTY(EditAnywhere, Category = "Graph")
 	bool bCanInstanceIdenticalAsset;
-	
+
 	UPROPERTY(SaveGame)
 	FString SavedAssetInstanceName;
 
 protected:
 	virtual bool CanBeAssetInstanced() const;
-	
+
 	virtual void PreloadContent() override;
 	virtual void FlushContent() override;
 
