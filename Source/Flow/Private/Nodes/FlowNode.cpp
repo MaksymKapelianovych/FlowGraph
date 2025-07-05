@@ -153,20 +153,20 @@ FText UFlowNode::GetNodeToolTip() const
 			return FText::FromString(BlueprintTitle);
 		}
 	}
-	
+
 	return GetClass()->GetToolTipText();
 }
 
 FText UFlowNode::GetGeneratedDisplayName() const
 {
 	static const FName NAME_GeneratedDisplayName(TEXT("GeneratedDisplayName"));
-	
+
 	if (GetClass()->ClassGeneratedBy)
 	{
 		UClass* Class = Cast<UBlueprint>(GetClass()->ClassGeneratedBy)->GeneratedClass;
 		return Class->GetMetaDataText(NAME_GeneratedDisplayName);
 	}
-	
+
 	return GetClass()->GetMetaDataText(NAME_GeneratedDisplayName);
 }
 
@@ -947,9 +947,12 @@ void UFlowNode::LogError(FString Message, const EFlowOnScreenMessageType OnScree
 		// Output Log
 		UE_LOG(LogFlow, Error, TEXT("%s"), *Message);
 
-		// Message Log
 #if WITH_EDITOR
-		GetFlowAsset()->GetTemplateAsset()->LogError(Message, this);
+		if (GEditor)
+		{
+			// Message Log
+			GetFlowAsset()->GetTemplateAsset()->LogError(Message, this);
+		}
 #endif
 	}
 #endif
@@ -963,10 +966,12 @@ void UFlowNode::LogWarning(FString Message)
 		// Output Log
 		UE_LOG(LogFlow, Warning, TEXT("%s"), *Message);
 
-		// Message Log
 #if WITH_EDITOR
-		GetFlowAsset()->GetTemplateAsset()->LogWarning(Message, this);
-#endif
+		if (GEditor)
+		{
+			// Message Log
+			GetFlowAsset()->GetTemplateAsset()->LogWarning(Message, this);
+		}#endif
 	}
 #endif
 }
@@ -979,9 +984,12 @@ void UFlowNode::LogNote(FString Message)
 		// Output Log
 		UE_LOG(LogFlow, Log, TEXT("%s"), *Message);
 
-		// Message Log
 #if WITH_EDITOR
-		GetFlowAsset()->GetTemplateAsset()->LogNote(Message, this);
+		if (GEditor)
+		{
+			// Message Log
+			GetFlowAsset()->GetTemplateAsset()->LogNote(Message, this);
+		}
 #endif
 	}
 #endif

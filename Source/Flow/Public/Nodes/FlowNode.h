@@ -17,7 +17,7 @@ class UFlowAsset;
 class UFlowSubsystem;
 struct FFlowNodeSaveData;
 
-#if WITH_EDITOR
+#if WITH_EDITORONLY_DATA
 DECLARE_DELEGATE(FFlowNodeEvent);
 #endif
 
