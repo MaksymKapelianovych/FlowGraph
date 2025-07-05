@@ -2,7 +2,7 @@
 
 #include "Graph/Nodes/FlowGraphNode.h"
 
-#include "Asset/FlowDebuggerSubsystem.h"
+#include "Asset/FlowDebugEditorSubsystem.h"
 #include "FlowEditorCommands.h"
 #include "Graph/FlowGraph.h"
 #include "Graph/FlowGraphEditorSettings.h"
@@ -1077,7 +1077,7 @@ void UFlowGraphNode::TryPausingSession(bool bPauseSession)
 		FEditorDelegates::ResumePIE.AddUObject(this, &UFlowGraphNode::OnResumePIE);
 		FEditorDelegates::EndPIE.AddUObject(this, &UFlowGraphNode::OnEndPIE);
 
-		UFlowDebuggerSubsystem::PausePlaySession();
+		UFlowDebugEditorSubsystem::PausePlaySession();
 	}
 }
 
