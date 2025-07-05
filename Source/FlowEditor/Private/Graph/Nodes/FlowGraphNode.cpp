@@ -123,16 +123,17 @@ void UFlowGraphNode::PostPlacedNewNode()
 		FlowNodeClass.LoadSynchronous();
 	}
 
-	UClass* NodeClass = FlowNodeClass.Get();
-	if (NodeClass && (FlowNode == nullptr))
+	if (FlowNode == nullptr)
 	{
-		UEdGraph* MyGraph = GetGraph();
-		UObject* GraphOwner = MyGraph ? MyGraph->GetOuter() : nullptr;
-		if (GraphOwner)
+		if (const UClass* NodeClass = FlowNodeClass.Get())
 		{
-			FlowNode = Cast<UFlowNode>(NewObject<UObject>(GraphOwner, NodeClass));
-			FlowNode->SetFlags(RF_Transactional);
-			FlowNode->SetGraphNode(this);
+			UEdGraph* Graph = GetGraph();
+			if (Graph && Graph->GetOuter())
+			{
+				FlowNode = NewObject<UFlowNode>(Graph->GetOuter(), NodeClass);
+				FlowNode->SetFlags(RF_Transactional);
+				FlowNode->SetGraphNode(this);
+			}
 		}
 	}
 }
@@ -179,8 +180,8 @@ void UFlowGraphNode::OnExternalChange()
 	Modify();
 	
 	bNeedsFullReconstruction = true;
-
 	ReconstructNode();
+	
 	GetGraph()->NotifyNodeChanged(this);
 }
 
@@ -299,10 +300,12 @@ void UFlowGraphNode::ReconstructNode()
 	{
 		DebuggerSubsystem->RemoveObsoletePinBreakpoints(this);
 	}
-	
+
 	bNeedsFullReconstruction = false;
 	bIsReconstructingNode = false;
 
+	// This ensures the graph editor 'Refresh' button still rebuilds all the graph widgets even if the FlowGraphNode has nothing to update
+	// Ideally we could get rid of the 'Refresh' button, but I think it will keep being useful, esp. for users making rough custom widgets
 	(void)OnReconstructNodeCompleted.ExecuteIfBound();
 }
 
@@ -394,16 +397,12 @@ void UFlowGraphNode::RewireOldPinsToNewPins(TArray<UEdGraphPin*>& InOldPins)
 			switch (OrphanedPin->Direction)
 			{
 			case EGPD_Input:
-				{
-					InputPins.Add(OrphanedPin);
-					break;
-				}
+				InputPins.Add(OrphanedPin);
+				break;
 			case EGPD_Output:
-				{
-					OutputPins.Add(OrphanedPin);
-					break;
-				}
-				default: ;
+				OutputPins.Add(OrphanedPin);
+				break;
+			default: ;
 			}
 		}
 	}
@@ -567,14 +566,14 @@ bool UFlowGraphNode::CanDuplicateNode() const
 	return true;
 }
 
-bool UFlowGraphNode::CanPasteHere( const UEdGraph* TargetGraph ) const
+bool UFlowGraphNode::CanPasteHere(const UEdGraph* TargetGraph) const
 {
 	const UFlowGraph* FlowGraph = Cast<UFlowGraph>(TargetGraph);
 	if (FlowGraph == nullptr)
 	{
 		return false;
 	}
-	
+
 	return Super::CanPasteHere(TargetGraph) && FlowGraph->GetFlowAsset()->IsNodeClassAllowed(FlowNodeClass.Get());
 }
 
@@ -750,8 +749,7 @@ void UFlowGraphNode::JumpToDefinition() const
 		{
 			if (FSourceCodeNavigation::CanNavigateToClass(FlowNode->GetClass()))
 			{
-				const bool bSucceeded = FSourceCodeNavigation::NavigateToClass(FlowNode->GetClass());
-				if (bSucceeded)
+				if (FSourceCodeNavigation::NavigateToClass(FlowNode->GetClass()))
 				{
 					return;
 				}
@@ -759,8 +757,7 @@ void UFlowGraphNode::JumpToDefinition() const
 
 			// Failing that, fall back to the older method which will still get the file open assuming it exists
 			FString NativeParentClassHeaderPath;
-			const bool bFileFound = FSourceCodeNavigation::FindClassHeaderPath(FlowNode->GetClass(), NativeParentClassHeaderPath) && (IFileManager::Get().FileSize(*NativeParentClassHeaderPath) != INDEX_NONE);
-			if (bFileFound)
+			if (FSourceCodeNavigation::FindClassHeaderPath(FlowNode->GetClass(), NativeParentClassHeaderPath) && (IFileManager::Get().FileSize(*NativeParentClassHeaderPath) != INDEX_NONE))
 			{
 				const FString AbsNativeParentClassHeaderPath = FPaths::ConvertRelativePathToFull(NativeParentClassHeaderPath);
 				FSourceCodeNavigation::OpenSourceFile(AbsNativeParentClassHeaderPath);
@@ -1055,7 +1052,6 @@ void UFlowGraphNode::OnInputTriggered(const int32 Index)
 				TryPausingSession(true);
 			}
 		}
-		
 	}
 
 	TryPausingSession(false);
@@ -1222,7 +1218,7 @@ bool UFlowGraphNode::HavePinsChanged() const
 	// Compare valid pin names
 	for (const FFlowPin& FlowNodePin : AllFlowNodePins)
 	{
-		if (!AllGraphNodePins.ContainsByPredicate([&FlowNodePin](UEdGraphPin* GraphNodePin)
+		if (!AllGraphNodePins.ContainsByPredicate([&FlowNodePin](const UEdGraphPin* GraphNodePin)
 		{
 			return GraphNodePin->PinName == FlowNodePin.PinName;
 		}))
@@ -1274,19 +1270,13 @@ void UFlowGraphNode::RebuildPinArraysOnLoad()
 		switch (Pin->Direction)
 		{
 		case EGPD_Input:
-			{
-				InputPins.Add(Pin);
-				break;
-			}
+			InputPins.Add(Pin);
+			break;
 		case EGPD_Output:
-			{
-				OutputPins.Add(Pin);
-				break;
-			}
+			OutputPins.Add(Pin);
+			break;
 		default:
-			{
-				UE_LOG(LogFlow, Error, TEXT("Encountered Pin with invalid direction!"));
-			}
+			UE_LOG(LogFlow, Error, TEXT("Encountered Pin with invalid direction!"));
 		}
 	}
 }
