@@ -191,20 +191,6 @@ public:
 	// --
 
 //////////////////////////////////////////////////////////////////////////
-// Breakpoints
-
-public:
-	void OnInputTriggered(const int32 Index);
-	void OnOutputTriggered(const int32 Index);
-
-private:
-	void TryPausingSession(bool bPauseSession);
-
-	void OnResumePIE(const bool bIsSimulating);
-	void OnEndPIE(const bool bIsSimulating);
-	void ResetBreakpoints();
-
-//////////////////////////////////////////////////////////////////////////
 // Execution Override
 
 public:

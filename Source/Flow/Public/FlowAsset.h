@@ -22,21 +22,9 @@ class UEdGraph;
 class UEdGraphNode;
 class UFlowAsset;
 
-#if WITH_EDITOR
-
-/** Interface for calling the graph editor methods */
-class FLOW_API IFlowGraphInterface
-{
-public:
-	IFlowGraphInterface() {}
-	virtual ~IFlowGraphInterface() {}
-
-	virtual void OnInputTriggered(UEdGraphNode* GraphNode, const int32 Index) const {}
-	virtual void OnOutputTriggered(UEdGraphNode* GraphNode, const int32 Index) const {}
-};
-
+#if !UE_BUILD_SHIPPING
 DECLARE_DELEGATE(FFlowGraphEvent);
-
+DECLARE_DELEGATE_TwoParams(FFlowSignalEvent, const FGuid& /*NodeGuid*/, const FName& /*PinName*/);
 #endif
 
 /**
@@ -66,7 +54,7 @@ public:
 	bool bWorldBound;
 
 //////////////////////////////////////////////////////////////////////////
-// Graph
+	// Graph (editor-only)
 
 #if WITH_EDITOR
 public:
@@ -78,12 +66,23 @@ public:
 	virtual void PostDuplicate(bool bDuplicateForPIE) override;
 	virtual void PostLoad() override;
 	// --
+#endif	
 
+#if WITH_EDITORONLY_DATA
 public:
 	FSimpleDelegate OnDetailsRefreshRequested;
 
 	static FString ValidationError_NodeClassNotAllowed;
 	static FString ValidationError_NullNodeInstance;
+	
+private:
+	UPROPERTY()
+	TObjectPtr<UEdGraph> FlowGraph;
+#endif
+
+#if WITH_EDITOR
+public:
+	UEdGraph* GetGraph() const { return FlowGraph; }
 
 	virtual EDataValidationResult ValidateAsset(FFlowMessageLog& MessageLog);
 
@@ -95,25 +94,6 @@ protected:
 	bool CanFlowAssetUseFlowNodeClass(const UClass& FlowNodeClass) const;
 	bool CanFlowAssetReferenceFlowNode(const UClass& FlowNodeClass, FText* OutOptionalFailureReason = nullptr) const;
 #endif
-
-	// IFlowGraphInterface
-#if WITH_EDITORONLY_DATA
-
-private:
-	UPROPERTY()
-	TObjectPtr<UEdGraph> FlowGraph;
-
-	static TSharedPtr<IFlowGraphInterface> FlowGraphInterface;
-#endif
-
-public:
-#if WITH_EDITOR
-	UEdGraph* GetGraph() const { return FlowGraph; };
-
-	static void SetFlowGraphInterface(TSharedPtr<IFlowGraphInterface> InFlowAssetEditor);
-	static TSharedPtr<IFlowGraphInterface> GetFlowGraphInterface() { return FlowGraphInterface; };
-#endif
-	// -- 
 
 //////////////////////////////////////////////////////////////////////////
 // Nodes
@@ -357,6 +337,11 @@ protected:
 	void FinishNode(UFlowNode* Node);
 	void ResetNodes();
 
+#if !UE_BUILD_SHIPPING
+public:	
+	FFlowSignalEvent OnPinTriggered;
+#endif
+	
 public:
 	UFlowSubsystem* GetFlowSubsystem() const;
 	FName GetDisplayName() const;

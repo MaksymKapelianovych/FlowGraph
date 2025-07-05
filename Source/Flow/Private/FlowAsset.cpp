@@ -31,7 +31,7 @@ FString UFlowAsset::ValidationError_NullNodeInstance = TEXT("Node with GUID {0} 
 UFlowAsset::UFlowAsset(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 	, bWorldBound(true)
-#if WITH_EDITOR
+#if WITH_EDITORONLY_DATA
 	, FlowGraph(nullptr)
 #endif
 	, AllowedNodeClasses({UFlowNode::StaticClass()})
@@ -249,14 +249,6 @@ bool UFlowAsset::CanFlowAssetReferenceFlowNode(const UClass& FlowNodeClass, FTex
 	}
 
 	return true;
-}
-
-TSharedPtr<IFlowGraphInterface> UFlowAsset::FlowGraphInterface = nullptr;
-
-void UFlowAsset::SetFlowGraphInterface(TSharedPtr<IFlowGraphInterface> InFlowAssetEditor)
-{
-	check(!FlowGraphInterface.IsValid());
-	FlowGraphInterface = InFlowAssetEditor;
 }
 
 UFlowNode* UFlowAsset::CreateNode(const UClass* NodeClass, UEdGraphNode* GraphNode)
@@ -920,9 +912,9 @@ bool UFlowAsset::IsBoundToWorld_Implementation()
 void UFlowAsset::LogError(const FString& MessageToLog, const UFlowNode* Node) const
 {
 	// this is runtime log which is should be only called on runtime instances of asset
-	if (TemplateAsset == nullptr)
+	if (TemplateAsset)
 	{
-		UE_LOG(LogFlow, Log, TEXT("Attempted to use Runtime Log on template asset %s"), *MessageToLog);
+		UE_LOG(LogFlow, Log, TEXT("Attempted to use Runtime Log on template instance %s"), *MessageToLog);
 	}
 
 	if (RuntimeLog.Get())
@@ -935,9 +927,9 @@ void UFlowAsset::LogError(const FString& MessageToLog, const UFlowNode* Node) co
 void UFlowAsset::LogWarning(const FString& MessageToLog, const UFlowNode* Node) const
 {
 	// this is runtime log which is should be only called on runtime instances of asset
-	if (TemplateAsset == nullptr)
+	if (TemplateAsset)
 	{
-		UE_LOG(LogFlow, Log, TEXT("Attempted to use Runtime Log on template asset %s"), *MessageToLog);
+		UE_LOG(LogFlow, Log, TEXT("Attempted to use Runtime Log on template instance %s"), *MessageToLog);
 	}
 
 	if (RuntimeLog.Get())
@@ -950,9 +942,9 @@ void UFlowAsset::LogWarning(const FString& MessageToLog, const UFlowNode* Node) 
 void UFlowAsset::LogNote(const FString& MessageToLog, const UFlowNode* Node) const
 {
 	// this is runtime log which is should be only called on runtime instances of asset
-	if (TemplateAsset == nullptr)
+	if (TemplateAsset)
 	{
-		UE_LOG(LogFlow, Log, TEXT("Attempted to use Runtime Log on template asset %s"), *MessageToLog);
+		UE_LOG(LogFlow, Log, TEXT("Attempted to use Runtime Log on template instance %s"), *MessageToLog);
 	}
 
 	if (RuntimeLog.Get())

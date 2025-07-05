@@ -36,8 +36,8 @@ FString UFlowNode::NoActorsFound = TEXT("No actors found");
 
 UFlowNode::UFlowNode(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
+#if WITH_EDITORONLY_DATA
 	, GraphNode(nullptr)
-#if WITH_EDITOR
 	, bDisplayNodeTitleWithoutPrefix(true)
 	, bCanDelete(true)
 	, bCanDuplicate(true)
@@ -76,7 +76,7 @@ void UFlowNode::PostLoad()
 	Super::PostLoad();
 
 	// fix Class Default Object
-	FixNode(nullptr);
+	// FixNode(nullptr);
 }
 
 void UFlowNode::FixNode(UEdGraphNode* NewGraphNode)
@@ -604,22 +604,20 @@ void UFlowNode::TriggerInput(const FName& PinName, const EFlowPinActivationType 
 		// record for debugging
 		TArray<FPinRecord>& Records = InputRecords.FindOrAdd(PinName);
 		Records.Add(FPinRecord(FApp::GetCurrentTime(), ActivationType));
-#endif // UE_BUILD_SHIPPING
-
-#if WITH_EDITOR
-		if (GEditor && UFlowAsset::GetFlowGraphInterface().IsValid())
+		
+		if (const UFlowAsset* FlowAssetTemplate = GetFlowAsset()->GetTemplateAsset())
 		{
-			UFlowAsset::GetFlowGraphInterface()->OnInputTriggered(GraphNode, InputPins.IndexOfByKey(PinName));
+			(void)FlowAssetTemplate->OnPinTriggered.ExecuteIfBound(NodeGuid, PinName);
 		}
-#endif // WITH_EDITOR
+#endif // UE_BUILD_SHIPPING
 	}
+#if !UE_BUILD_SHIPPING
 	else
 	{
-#if !UE_BUILD_SHIPPING
 		LogError(FString::Printf(TEXT("Input Pin name %s invalid"), *PinName.ToString()));
-#endif // UE_BUILD_SHIPPING
 		return;
 	}
+#endif // UE_BUILD_SHIPPING
 
 	switch (SignalMode)
 	{
@@ -678,13 +676,13 @@ void UFlowNode::TriggerOutput(const FName& PinName, const bool bFinish /*= false
 		TArray<FPinRecord>& Records = OutputRecords.FindOrAdd(PinName);
 		Records.Add(FPinRecord(FApp::GetCurrentTime(), ActivationType));
 
-#if WITH_EDITOR
-		if (GEditor && UFlowAsset::GetFlowGraphInterface().IsValid())
+		if (const UFlowAsset* FlowAssetTemplate = GetFlowAsset()->GetTemplateAsset())
 		{
-			UFlowAsset::GetFlowGraphInterface()->OnOutputTriggered(GraphNode, OutputPins.IndexOfByKey(PinName));
+			FlowAssetTemplate->OnPinTriggered.ExecuteIfBound(NodeGuid, PinName);
 		}
-#endif // WITH_EDITOR
+#endif // UE_BUILD_SHIPPING
 	}
+#if !UE_BUILD_SHIPPING
 	else
 	{
 		LogError(FString::Printf(TEXT("Output Pin name %s invalid"), *PinName.ToString()));

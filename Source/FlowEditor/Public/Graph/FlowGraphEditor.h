@@ -51,9 +51,11 @@ private:
 	void OnCreateComment() const;
 
 public:
+	virtual bool IsTabFocused() const;
+
 	static bool CanEdit();
 	static bool IsPIE();
-	virtual bool IsTabFocused() const;
+	static bool IsPlaySessionPaused();
 
 	virtual void SelectSingleNode(UEdGraphNode* Node);
 

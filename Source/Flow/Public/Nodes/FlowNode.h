@@ -38,11 +38,10 @@ class FLOW_API UFlowNode : public UObject, public IVisualLoggerDebugSnapshotInte
 //////////////////////////////////////////////////////////////////////////
 // Node
 
+#if WITH_EDITORONLY_DATA
 private:
 	UPROPERTY()
 	TObjectPtr<UEdGraphNode> GraphNode;
-
-#if WITH_EDITORONLY_DATA
 
 protected:
 	UPROPERTY()
@@ -92,12 +91,12 @@ public:
 
 	// used when import graph from another asset
 	virtual void PostImport() {}
-#endif
+#endif // WITH_EDITOR
 
-	UEdGraphNode* GetGraphNode() const { return GraphNode; }
 
 #if WITH_EDITOR
 	void SetGraphNode(UEdGraphNode* NewGraph);
+	UEdGraphNode* GetGraphNode() const { return GraphNode; }
 
 	virtual FString GetNodeCategory() const;
 	virtual FText GetNodeTitle() const;
@@ -111,7 +110,7 @@ public:
 
 	// Short summary of node's content - displayed over node as NodeInfoPopup
 	virtual FString GetNodeDescription() const;
-#endif
+#endif // WITH_EDITOR
 
 protected:
 	// Short summary of node's content - displayed over node as NodeInfoPopup
@@ -163,7 +162,7 @@ protected:
 
 #if WITH_EDITOR
 	FFlowMessageLog ValidationLog;
-#endif
+#endif // WITH_EDITOR
 
 //////////////////////////////////////////////////////////////////////////
 // All created pins (default, class-specific and added by user)

@@ -49,15 +49,14 @@ private:
 	UPROPERTY()
 	TMap<TObjectPtr<UFlowNode_SubGraph>, TObjectPtr<UFlowAsset>> InstancedSubFlows;
 
-#if WITH_EDITOR
-public:
+#if !UE_BUILD_SHIPPINGpublic:
 	/* Called after creating the first instance of given Flow Asset */
 	static FNativeFlowAssetEvent OnInstancedTemplateAdded;
 
 	/* Called just before removing the last instance of given Flow Asset */
 	static FNativeFlowAssetEvent OnInstancedTemplateRemoved;
 #endif
-	
+
 protected:
 	UPROPERTY()
 	TObjectPtr<UFlowSaveGame> LoadedSaveGame;

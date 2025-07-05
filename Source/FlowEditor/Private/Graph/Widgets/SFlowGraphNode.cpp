@@ -114,7 +114,7 @@ void SFlowGraphNode::GetOverlayBrushes(bool bSelected, const FVector2D WidgetSiz
 	check(DebuggerSubsystem.IsValid());
 	
 	// Node breakpoint
-	if (const FFlowBreakpoint* NodeBreakpoint = DebuggerSubsystem->FindBreakpoint(FlowGraphNode))
+	if (const FFlowBreakpoint* NodeBreakpoint = DebuggerSubsystem->FindBreakpoint(FlowGraphNode->NodeGuid))
 	{
 		FOverlayBrushInfo NodeBrush;
 
@@ -137,7 +137,7 @@ void SFlowGraphNode::GetOverlayBrushes(bool bSelected, const FVector2D WidgetSiz
 	// Pin breakpoints
 	for (UEdGraphPin* Pin : FlowGraphNode->Pins)
 	{
-		if (const FFlowBreakpoint* PinBreakpoint = DebuggerSubsystem->FindBreakpoint(Pin))
+		if (const FFlowBreakpoint* PinBreakpoint = DebuggerSubsystem->FindBreakpoint(Pin->GetOwningNode()->NodeGuid, Pin->PinName))
 		{
 			if (Pin->Direction == EGPD_Input)
 			{

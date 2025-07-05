@@ -12,26 +12,11 @@
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(FlowGraph)
 
-void FFlowGraphInterface::OnInputTriggered(UEdGraphNode* GraphNode, const int32 Index) const
-{
-	CastChecked<UFlowGraphNode>(GraphNode)->OnInputTriggered(Index);
-}
-
-void FFlowGraphInterface::OnOutputTriggered(UEdGraphNode* GraphNode, const int32 Index) const
-{
-	CastChecked<UFlowGraphNode>(GraphNode)->OnOutputTriggered(Index);
-}
-
 UFlowGraph::UFlowGraph(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
 	bLockUpdates = false;
 	bIsLoadingGraph = false;
-	
-	if (!UFlowAsset::GetFlowGraphInterface().IsValid())
-	{
-		UFlowAsset::SetFlowGraphInterface(MakeShared<FFlowGraphInterface>());
-	}
 }
 
 void UFlowGraph::CreateGraph(UFlowAsset* InFlowAsset)

@@ -821,8 +821,9 @@ void UFlowGraphNode::RemoveOrphanedPin(UEdGraphPin* Pin)
 
 	if (UFlowDebuggerSubsystem* DebuggerSubsystem = GEngine->GetEngineSubsystem<UFlowDebuggerSubsystem>())
 	{
-		DebuggerSubsystem->RemovePinBreakpoint(Pin);
+		DebuggerSubsystem->RemovePinBreakpoint(NodeGuid, Pin->PinName);
 	}
+
 	Pin->MarkAsGarbage();
 	Pins.Remove(Pin);
 
@@ -909,9 +910,9 @@ void UFlowGraphNode::RemoveInstancePin(UEdGraphPin* Pin)
 
 	if (UFlowDebuggerSubsystem* DebuggerSubsystem = GEngine->GetEngineSubsystem<UFlowDebuggerSubsystem>())
 	{
-		DebuggerSubsystem->RemovePinBreakpoint(Pin);
+		DebuggerSubsystem->RemovePinBreakpoint(NodeGuid, Pin->PinName);
 	}
-	
+
 	if (Pin->Direction == EGPD_Input)
 	{
 		if (InputPins.Contains(Pin))
@@ -1037,87 +1038,6 @@ void UFlowGraphNode::GetPinHoverText(const UEdGraphPin& Pin, FString& HoverTextO
 					}
 				}
 			}
-		}
-	}
-}
-
-void UFlowGraphNode::OnInputTriggered(const int32 Index)
-{
-	if (InputPins.IsValidIndex(Index))
-	{
-		if (UFlowDebuggerSubsystem* DebuggerSubsystem = GEngine->GetEngineSubsystem<UFlowDebuggerSubsystem>())
-		{
-			if (DebuggerSubsystem->MarkAsHit(InputPins[Index]))
-			{
-				TryPausingSession(true);
-			}
-		}
-	}
-
-	TryPausingSession(false);
-}
-
-void UFlowGraphNode::OnOutputTriggered(const int32 Index)
-{
-	if (OutputPins.IsValidIndex(Index))
-	{
-		if (UFlowDebuggerSubsystem* DebuggerSubsystem = GEngine->GetEngineSubsystem<UFlowDebuggerSubsystem>())
-		{
-			if (DebuggerSubsystem->MarkAsHit(OutputPins[Index]))
-			{
-				TryPausingSession(true);
-			}
-		}
-	}
-
-	TryPausingSession(false);
-}
-
-void UFlowGraphNode::TryPausingSession(bool bPauseSession)
-{
-	// Node breakpoints waits on any pin triggered
-	UFlowDebuggerSubsystem* DebuggerSubsystem = GEngine->GetEngineSubsystem<UFlowDebuggerSubsystem>();
-	if (DebuggerSubsystem)
-	{
-		if (DebuggerSubsystem->MarkAsHit(this))
-		{
-			bPauseSession = true;
-		}
-	}
-
-	if (bPauseSession)
-	{
-		FEditorDelegates::ResumePIE.AddUObject(this, &UFlowGraphNode::OnResumePIE);
-		FEditorDelegates::EndPIE.AddUObject(this, &UFlowGraphNode::OnEndPIE);
-
-		if (DebuggerSubsystem)
-		{
-			DebuggerSubsystem->PausePlaySession();
-		}
-	}
-}
-
-void UFlowGraphNode::OnResumePIE(const bool bIsSimulating)
-{
-	ResetBreakpoints();
-}
-
-void UFlowGraphNode::OnEndPIE(const bool bIsSimulating)
-{
-	ResetBreakpoints();
-}
-
-void UFlowGraphNode::ResetBreakpoints()
-{
-	FEditorDelegates::ResumePIE.RemoveAll(this);
-	FEditorDelegates::EndPIE.RemoveAll(this);
-
-	if (UFlowDebuggerSubsystem* DebuggerSubsystem = GEngine->GetEngineSubsystem<UFlowDebuggerSubsystem>())
-	{
-		DebuggerSubsystem->ResetHit(this);
-		for (const UEdGraphPin* Pin : Pins)
-		{
-			DebuggerSubsystem->ResetHit(Pin);
 		}
 	}
 }
