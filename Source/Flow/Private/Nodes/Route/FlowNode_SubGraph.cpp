@@ -128,11 +128,14 @@ TArray<FFlowPin> UFlowNode_SubGraph::GetContextInputs()
 	if (!Asset.IsNull())
 	{
 		Asset.LoadSynchronous();
-		for (const FName& PinName : Asset.Get()->GetCustomInputs())
+		if (Asset.IsValid())
 		{
-			if (!PinName.IsNone())
+			for (const FName& PinName : Asset->GetCustomInputs())
 			{
-				EventNames.Emplace(PinName);
+				if (!PinName.IsNone())
+				{
+					EventNames.AddUnique(FFlowPin(PinName));
+				}
 			}
 		}
 	}
