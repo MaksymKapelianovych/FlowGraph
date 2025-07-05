@@ -1,4 +1,8 @@
-﻿#include "FlowDebugger.h"
+﻿// Copyright https://github.com/MothCocoon/FlowGraph/graphs/contributors
+
+#include "FlowDebuggerModule.h"
+
+#include "Modules/ModuleManager.h"
 
 #define LOCTEXT_NAMESPACE "FFlowDebuggerModule"
 
