@@ -460,7 +460,7 @@ void UFlowNode::RemoveUserOutput(const FName& PinName)
 }
 #endif
 
-TSet<UFlowNode*> UFlowNode::GetConnectedNodes() const
+TSet<UFlowNode*> UFlowNode::GatherConnectedNodes() const
 {
 	TSet<UFlowNode*> Result;
 	for (const TPair<FName, FConnectedPin>& Connection : Connections)
@@ -526,7 +526,7 @@ void UFlowNode::RecursiveFindNodesByClass(UFlowNode* Node, const TSubclassOf<UFl
 		}
 
 		// Recurse
-		for (UFlowNode* ConnectedNode : Node->GetConnectedNodes())
+		for (UFlowNode* ConnectedNode : Node->GatherConnectedNodes())
 		{
 			RecursiveFindNodesByClass(ConnectedNode, Class, Depth, OutNodes);
 		}

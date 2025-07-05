@@ -379,7 +379,7 @@ UFlowNode* UFlowAsset::GetDefaultEntryNode() const
 	{
 		if (UFlowNode_Start* StartNode = Cast<UFlowNode_Start>(Node.Value))
 		{
-			if (StartNode->GetConnectedNodes().Num() > 0)
+			if (StartNode->GatherConnectedNodes().Num() > 0)
 			{
 				return StartNode;
 			}

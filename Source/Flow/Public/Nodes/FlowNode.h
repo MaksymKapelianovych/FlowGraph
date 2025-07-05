@@ -237,7 +237,7 @@ public:
 	FConnectedPin GetConnection(const FName OutputName) const { return Connections.FindRef(OutputName); }
 
 	UFUNCTION(BlueprintPure, Category= "FlowNode")
-	TSet<UFlowNode*> GetConnectedNodes() const;
+	TSet<UFlowNode*> GatherConnectedNodes() const;
 	
 	FName GetPinConnectedToNode(const FGuid& OtherNodeGuid);
 

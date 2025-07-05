@@ -206,7 +206,7 @@ protected:
 			OutNodes.Emplace(NodeOfRequiredType);
 		}
 
-		for (UFlowNode* ConnectedNode : Node->GetConnectedNodes())
+		for (UFlowNode* ConnectedNode : Node->GatherConnectedNodes())
 		{
 			if (ConnectedNode && !IteratedNodes.Contains(ConnectedNode))
 			{
