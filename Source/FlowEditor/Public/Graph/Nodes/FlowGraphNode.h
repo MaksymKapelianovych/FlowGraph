@@ -72,6 +72,7 @@ private:
 
 public:
 	virtual void OnGraphRefresh();
+	virtual bool CanPlaceBreakpoints() const;
 
 //////////////////////////////////////////////////////////////////////////
 // Graph node
