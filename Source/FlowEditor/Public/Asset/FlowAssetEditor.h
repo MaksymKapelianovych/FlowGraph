@@ -122,6 +122,7 @@ public:
 protected:
 	virtual void CreateToolbar();
 	virtual void BindToolbarCommands();
+	virtual void InitializeExtenders();
 	
 	virtual void RefreshAsset();
 	virtual void RefreshDetails();
