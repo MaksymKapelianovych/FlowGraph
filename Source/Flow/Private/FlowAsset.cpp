@@ -924,7 +924,7 @@ void UFlowAsset::OnLoad_Implementation()
 {
 }
 
-bool UFlowAsset::IsBoundToWorld_Implementation()
+bool UFlowAsset::IsBoundToWorld_Implementation() const
 {
 	return bWorldBound;
 }

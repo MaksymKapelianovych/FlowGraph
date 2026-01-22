@@ -398,7 +398,7 @@ protected:
 
 public:
 	UFUNCTION(BlueprintNativeEvent, Category = "SaveGame")
-	bool IsBoundToWorld();
+	bool IsBoundToWorld() const;
 
 //////////////////////////////////////////////////////////////////////////
 // Utils
