@@ -36,7 +36,25 @@ void UFlowNode_OnNotifyFromActor::ForgetActor(TWeakObjectPtr<AActor> Actor, TWea
 
 void UFlowNode_OnNotifyFromActor::OnNotifyFromComponent(UFlowComponent* Component, const FGameplayTag& Tag)
 {
-	if (Component->IdentityTags.HasAnyExact(IdentityTags) && (!NotifyTags.IsValid() || NotifyTags.HasTagExact(Tag)))
+	bool bIdentityMatches = false;
+
+	switch (IdentityMatchType)
+	{
+	case EFlowTagContainerMatchType::HasAny:
+		bIdentityMatches = Component->IdentityTags.HasAny(IdentityTags);
+		break;
+	case EFlowTagContainerMatchType::HasAnyExact:
+		bIdentityMatches = Component->IdentityTags.HasAnyExact(IdentityTags);
+		break;
+	case EFlowTagContainerMatchType::HasAll:
+		bIdentityMatches = Component->IdentityTags.HasAll(IdentityTags);
+		break;
+	case EFlowTagContainerMatchType::HasAllExact:
+		bIdentityMatches = Component->IdentityTags.HasAllExact(IdentityTags);
+		break;
+	}
+	
+	if (bIdentityMatches && (!NotifyTags.IsValid() || NotifyTags.HasTagExact(Tag)))
 	{
 		OnEventReceived();
 	}
