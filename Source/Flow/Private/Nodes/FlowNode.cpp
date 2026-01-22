@@ -974,7 +974,8 @@ void UFlowNode::LogWarning(FString Message)
 		{
 			// Message Log
 			GetFlowAsset()->GetTemplateAsset()->LogWarning(Message, this);
-		}#endif
+		}
+#endif
 	}
 #endif
 }

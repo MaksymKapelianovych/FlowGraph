@@ -24,9 +24,9 @@
 			"LoadingPhase" : "PreDefault"
 		},
 		{
-			"Name": "FlowDebugger",
-			"Type": "Runtime",
-			"LoadingPhase": "Default"
+			"Name" : "FlowEditor",
+			"Type" : "Editor",
+			"LoadingPhase" : "PreDefault"
 		}
 	],
 	"Plugins": [

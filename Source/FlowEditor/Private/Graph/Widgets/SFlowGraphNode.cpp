@@ -109,7 +109,7 @@ const FSlateBrush* SFlowGraphNode::GetShadowBrush(bool bSelected) const
 	return SGraphNode::GetShadowBrush(bSelected);
 }
 
-void SFlowGraphNode::GetOverlayBrushes(bool bSelected, const FVector2D WidgetSize, TArray<FOverlayBrushInfo>& Brushes) const
+void SFlowGraphNode::GetOverlayBrushes(bool bSelected, const FVector2f& WidgetSize, TArray<FOverlayBrushInfo>& Brushes) const
 {
 	check(DebuggerSubsystem.IsValid());
 	

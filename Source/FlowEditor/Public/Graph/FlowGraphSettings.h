@@ -88,7 +88,7 @@ class FLOWEDITOR_API UFlowGraphSettings : public UDeveloperSettings
 	float CircuitConnectionAngle;
 
 	UPROPERTY(config, EditAnywhere, Category = "Wires", meta = (EditCondition = "ConnectionDrawType == EFlowConnectionDrawType::Circuit"))
-	FVector2D CircuitConnectionSpacing;
+	FVector2f CircuitConnectionSpacing;
 
 	UPROPERTY(EditAnywhere, config, Category = "Wires")
 	FLinearColor InactiveWireColor;

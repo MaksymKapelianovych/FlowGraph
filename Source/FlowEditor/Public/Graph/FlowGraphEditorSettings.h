@@ -54,7 +54,7 @@ public:
 	bool bShowSubGraphPath;
 	
 	UPROPERTY(config, EditAnywhere, Category = "Nodes", meta = (EditCondition = "bShowSubGraphPreview"))
-	FVector2D SubGraphPreviewSize;
+	FVector2f SubGraphPreviewSize;
 
 	/** Enable hot reload for native flow nodes?
 	 * WARNING: hot reload can easily crash the editor and you can lose progress */

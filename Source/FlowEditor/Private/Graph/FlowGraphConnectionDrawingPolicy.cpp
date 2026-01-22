@@ -112,11 +112,7 @@ void FFlowGraphConnectionDrawingPolicy::BuildPaths()
 	}
 }
 
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION < 6
-void FFlowGraphConnectionDrawingPolicy::DrawConnection(int32 LayerId, const FVector2D& Start, const FVector2D& End, const FConnectionParams& Params)
-#else
 void FFlowGraphConnectionDrawingPolicy::DrawConnection(int32 LayerId, const FVector2f& Start, const FVector2f& End, const FConnectionParams& Params)
-#endif
 {
 	switch (UFlowGraphSettings::Get()->ConnectionDrawType)
 	{
@@ -124,11 +120,7 @@ void FFlowGraphConnectionDrawingPolicy::DrawConnection(int32 LayerId, const FVec
 			FConnectionDrawingPolicy::DrawConnection(LayerId, Start, End, Params);
 			break;
 		case EFlowConnectionDrawType::Circuit:
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION < 6
-			DrawCircuitSpline(LayerId, FVector2f(Start), FVector2f(End), Params);
-#else
 			DrawCircuitSpline(LayerId, Start, End, Params);
-#endif		
 			break;
 		default: ;
 	}
@@ -250,11 +242,7 @@ void FFlowGraphConnectionDrawingPolicy::DrawCircuitConnection(const int32& Layer
 	{
 		// This table maps distance along curve to alpha
 		FInterpCurve<float> SplineReparamTable;
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION < 6
-		const float SplineLength = MakeSplineReparamTable(FVector2D(Start), FVector2D(StartDirection), FVector2D(End), FVector2D(EndDirection), SplineReparamTable);
-#else
 		const float SplineLength = MakeSplineReparamTable(Start, StartDirection, End, EndDirection, SplineReparamTable);
-#endif
 
 		// Draw bubbles on the spline
 		if (Params.bDrawBubbles)
@@ -323,9 +311,9 @@ bool FFlowGraphConnectionDrawingPolicy::ShouldChangeTangentForReroute(UFlowGraph
 	{
 		bool bPinReversed = false;
 
-		FVector2D AverageLeftPin;
-		FVector2D AverageRightPin;
-		FVector2D CenterPin = FVector2D::ZeroVector;
+		FVector2f AverageLeftPin;
+		FVector2f AverageRightPin;
+		FVector2f CenterPin = FVector2f::ZeroVector;
 		const bool bCenterValid = Reroute->OutputPins.Num() == 0 ? false : FindPinCenter(Reroute->OutputPins[0], /*out*/ CenterPin);
 		const bool bLeftValid = GetAverageConnectedPosition(Reroute, EGPD_Input, /*out*/ AverageLeftPin);
 		const bool bRightValid = GetAverageConnectedPosition(Reroute, EGPD_Output, /*out*/ AverageRightPin);
@@ -352,7 +340,7 @@ bool FFlowGraphConnectionDrawingPolicy::ShouldChangeTangentForReroute(UFlowGraph
 	}
 }
 
-bool FFlowGraphConnectionDrawingPolicy::FindPinCenter(const UEdGraphPin* Pin, FVector2D& OutCenter) const
+bool FFlowGraphConnectionDrawingPolicy::FindPinCenter(const UEdGraphPin* Pin, FVector2f& OutCenter) const
 {
 	if (const TSharedPtr<SGraphPin>* PinWidget = PinToPinWidgetMap.Find(Pin))
 	{
@@ -366,9 +354,9 @@ bool FFlowGraphConnectionDrawingPolicy::FindPinCenter(const UEdGraphPin* Pin, FV
 	return false;
 }
 
-bool FFlowGraphConnectionDrawingPolicy::GetAverageConnectedPosition(UFlowGraphNode_Reroute* Reroute, EEdGraphPinDirection Direction, FVector2D& OutPos) const
+bool FFlowGraphConnectionDrawingPolicy::GetAverageConnectedPosition(UFlowGraphNode_Reroute* Reroute, EEdGraphPinDirection Direction, FVector2f& OutPos) const
 {
-	FVector2D Result = FVector2D::ZeroVector;
+	FVector2f Result = FVector2f::ZeroVector;
 	int32 ResultCount = 0;
 
 	if(Reroute->InputPins.Num() == 0 || Reroute->OutputPins.Num() == 0)
@@ -379,7 +367,7 @@ bool FFlowGraphConnectionDrawingPolicy::GetAverageConnectedPosition(UFlowGraphNo
 	UEdGraphPin* Pin = (Direction == EGPD_Input) ? Reroute->InputPins[0] : Reroute->OutputPins[0];
 	for (const UEdGraphPin* LinkedPin : Pin->LinkedTo)
 	{
-		FVector2D CenterPoint;
+		FVector2f CenterPoint;
 		if (FindPinCenter(LinkedPin, /*out*/ CenterPoint))
 		{
 			Result += CenterPoint;

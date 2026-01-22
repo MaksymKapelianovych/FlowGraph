@@ -49,7 +49,8 @@ private:
 	UPROPERTY()
 	TMap<TObjectPtr<UFlowNode_SubGraph>, TObjectPtr<UFlowAsset>> InstancedSubFlows;
 
-#if !UE_BUILD_SHIPPINGpublic:
+#if !UE_BUILD_SHIPPING
+public:
 	/* Called after creating the first instance of given Flow Asset */
 	static FNativeFlowAssetEvent OnInstancedTemplateAdded;
 

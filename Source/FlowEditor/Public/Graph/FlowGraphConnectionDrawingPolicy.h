@@ -54,11 +54,7 @@ public:
 	void BuildPaths();
 
 	// FConnectionDrawingPolicy interface
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION < 6
-	virtual void DrawConnection(int32 LayerId, const FVector2D& Start, const FVector2D& End, const FConnectionParams& Params) override;
-#else
 	virtual void DrawConnection(int32 LayerId, const FVector2f& Start, const FVector2f& End, const FConnectionParams& Params) override;
-#endif
 	virtual void DetermineWiringStyle(UEdGraphPin* OutputPin, UEdGraphPin* InputPin, FConnectionParams& Params) override;
 	virtual void Draw(TMap<TSharedRef<SWidget>, FArrangedWidget>& PinGeometries, FArrangedChildren& ArrangedNodes) override;
 	// End of FConnectionDrawingPolicy interface
@@ -69,6 +65,6 @@ protected:
 	static FVector2f GetControlPoint(const FVector2f& Source, const FVector2f& Target);
 
 	bool ShouldChangeTangentForReroute(class UFlowGraphNode_Reroute* Reroute);
-	bool FindPinCenter(const UEdGraphPin* Pin, FVector2D& OutCenter) const;
-	bool GetAverageConnectedPosition(class UFlowGraphNode_Reroute* Reroute, EEdGraphPinDirection Direction, FVector2D& OutPos) const;
+	bool FindPinCenter(const UEdGraphPin* Pin, FVector2f& OutCenter) const;
+	bool GetAverageConnectedPosition(class UFlowGraphNode_Reroute* Reroute, EEdGraphPinDirection Direction, FVector2f& OutPos) const;
 };

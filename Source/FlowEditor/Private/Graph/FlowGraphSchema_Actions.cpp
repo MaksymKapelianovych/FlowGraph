@@ -23,7 +23,7 @@
 /////////////////////////////////////////////////////
 // Flow Node
 
-UEdGraphNode* FFlowGraphSchemaAction_NewNode::PerformAction(class UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode /* = true*/)
+UEdGraphNode* FFlowGraphSchemaAction_NewNode::PerformAction(class UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2f& Location, bool bSelectNewNode /* = true*/)
 {
 	// prevent adding new nodes while playing
 	if (GEditor->PlayWorld != nullptr)
@@ -39,7 +39,7 @@ UEdGraphNode* FFlowGraphSchemaAction_NewNode::PerformAction(class UEdGraph* Pare
 	return nullptr;
 }
 
-UFlowGraphNode* FFlowGraphSchemaAction_NewNode::CreateNode(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const UClass* NodeClass, const FVector2D Location, const bool bSelectNewNode /*= true*/)
+UFlowGraphNode* FFlowGraphSchemaAction_NewNode::CreateNode(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const UClass* NodeClass, const FVector2f& Location, const bool bSelectNewNode /*= true*/)
 {
 	check(NodeClass);
 
@@ -157,7 +157,7 @@ UFlowGraphNode* FFlowGraphSchemaAction_NewNode::RecreateNode(UEdGraph* ParentGra
 	return NewGraphNode;
 }
 
-UFlowGraphNode* FFlowGraphSchemaAction_NewNode::ImportNode(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const UClass* NodeClass, const FGuid& NodeGuid, const FVector2D Location)
+UFlowGraphNode* FFlowGraphSchemaAction_NewNode::ImportNode(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const UClass* NodeClass, const FGuid& NodeGuid, const FVector2f& Location)
 {
 	check(NodeClass);
 
@@ -197,7 +197,7 @@ UFlowGraphNode* FFlowGraphSchemaAction_NewNode::ImportNode(UEdGraph* ParentGraph
 	return NewGraphNode;
 }
 
-UEdGraphNode* FFlowGraphSchemaAction_Paste::PerformAction(class UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, const bool bSelectNewNode/* = true*/)
+UEdGraphNode* FFlowGraphSchemaAction_Paste::PerformAction(class UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2f& Location, const bool bSelectNewNode/* = true*/)
 {
 	// prevent adding new nodes while playing
 	if (GEditor->PlayWorld == nullptr)
@@ -211,7 +211,7 @@ UEdGraphNode* FFlowGraphSchemaAction_Paste::PerformAction(class UEdGraph* Parent
 /////////////////////////////////////////////////////
 // Comment Node
 
-UEdGraphNode* FFlowGraphSchemaAction_NewComment::PerformAction(class UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, const bool bSelectNewNode/* = true*/)
+UEdGraphNode* FFlowGraphSchemaAction_NewComment::PerformAction(class UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2f& Location, const bool bSelectNewNode/* = true*/)
 {
 	// prevent adding new nodes while playing
 	if (GEditor->PlayWorld != nullptr)
@@ -220,7 +220,7 @@ UEdGraphNode* FFlowGraphSchemaAction_NewComment::PerformAction(class UEdGraph* P
 	}
 
 	UEdGraphNode_Comment* CommentTemplate = NewObject<UEdGraphNode_Comment>();
-	FVector2D SpawnLocation = Location;
+	FVector2f SpawnLocation = Location;
 
 	const TSharedPtr<SFlowGraphEditor> FlowGraphEditor = FFlowGraphUtils::GetFlowGraphEditor(ParentGraph);
 	if (FlowGraphEditor.IsValid())

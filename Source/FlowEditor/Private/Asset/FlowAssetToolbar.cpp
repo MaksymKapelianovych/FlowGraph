@@ -274,7 +274,7 @@ static void OnDiffRevisionPicked(FRevisionInfo const& RevisionInfo, const FStrin
 					}
 					else
 					{
-						FMessageDialog::Open(EAppMsgType::Ok, LOCTEXT("SourceControl.HistoryWindow", "UnableToLoadAssets", "Unable to load assets to diff. Content may no longer be supported?"));
+						FMessageDialog::Open(EAppMsgType::Ok, LOCTEXT("UnableToLoadAssets", "Unable to load assets to diff. Content may no longer be supported?"));
 					}
 				}
 				break;

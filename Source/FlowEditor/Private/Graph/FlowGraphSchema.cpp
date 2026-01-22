@@ -23,11 +23,7 @@
 #include "Editor.h"
 #include "ScopedTransaction.h"
 
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION < 6
-#include "Kismet/BlueprintTypeConversions.h"
-#else
 #include "Runtime/Engine/Internal/Kismet/BlueprintTypeConversions.h"
-#endif
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(FlowGraphSchema)
 
@@ -93,8 +89,8 @@ void UFlowGraphSchema::GetGraphContextActions(FGraphContextMenuBuilder& ContextM
 void UFlowGraphSchema::CreateDefaultNodesForGraph(UEdGraph& Graph) const
 {
 	const UFlowAsset* AssetClassDefaults = GetAssetClassDefaults(&Graph);
-	static const FVector2D NodeOffsetIncrement = FVector2D(0, 128);
-	FVector2D NodeOffset = FVector2D::ZeroVector;
+	static const FVector2f NodeOffsetIncrement = FVector2f(0, 128);
+	FVector2f NodeOffset = FVector2f::ZeroVector;
 
 	// Start node
 	CreateDefaultNode(Graph, UFlowNode_Start::StaticClass(), NodeOffset, AssetClassDefaults->bStartNodePlacedAsGhostNode);
@@ -116,7 +112,7 @@ void UFlowGraphSchema::CreateDefaultNodesForGraph(UEdGraph& Graph) const
 	FlowAsset->HarvestNodeConnections();
 }
 
-UFlowGraphNode* UFlowGraphSchema::CreateDefaultNode(UEdGraph& Graph, const TSubclassOf<UFlowNode>& NodeClass, const FVector2D& Offset, const bool bPlacedAsGhostNode)
+UFlowGraphNode* UFlowGraphSchema::CreateDefaultNode(UEdGraph& Graph, const TSubclassOf<UFlowNode>& NodeClass, const FVector2f& Offset, const bool bPlacedAsGhostNode)
 {
 	UFlowGraphNode* NewGraphNode = FFlowGraphSchemaAction_NewNode::CreateNode(&Graph, nullptr, NodeClass, Offset);
 	SetNodeMetaData(NewGraphNode, FNodeMetadata::DefaultGraphNode);
@@ -286,13 +282,12 @@ TSharedPtr<FEdGraphSchemaAction> UFlowGraphSchema::GetCreateCommentAction() cons
 	return TSharedPtr<FEdGraphSchemaAction>(static_cast<FEdGraphSchemaAction*>(new FFlowGraphSchemaAction_NewComment));
 }
 
-PRAGMA_DISABLE_DEPRECATION_WARNINGS
-void UFlowGraphSchema::OnPinConnectionDoubleCicked(UEdGraphPin* PinA, UEdGraphPin* PinB, const FVector2D& GraphPosition) const
+void UFlowGraphSchema::OnPinConnectionDoubleCicked(UEdGraphPin* PinA, UEdGraphPin* PinB, const FVector2f& GraphPosition) const
 {
 	const FScopedTransaction Transaction(LOCTEXT("CreateFlowRerouteNodeOnWire", "Create Flow Reroute Node"));
 
-	const FVector2D NodeSpacerSize(42.0f, 24.0f);
-	const FVector2D KnotTopLeft = GraphPosition - (NodeSpacerSize * 0.5f);
+	const FVector2f NodeSpacerSize(42.0f, 24.0f);
+	const FVector2f KnotTopLeft = GraphPosition - (NodeSpacerSize * 0.5f);
 
 	UEdGraph* ParentGraph = PinA->GetOwningNode()->GetGraph();
 	UFlowGraphNode* NewReroute = FFlowGraphSchemaAction_NewNode::CreateNode(ParentGraph, nullptr, UFlowNode_Reroute::StaticClass(), KnotTopLeft, false);
@@ -301,17 +296,6 @@ void UFlowGraphSchema::OnPinConnectionDoubleCicked(UEdGraphPin* PinA, UEdGraphPi
 	PinA->MakeLinkTo((PinA->Direction == EGPD_Output) ? NewReroute->InputPins[0] : NewReroute->OutputPins[0]);
 	PinB->MakeLinkTo((PinB->Direction == EGPD_Output) ? NewReroute->InputPins[0] : NewReroute->OutputPins[0]);
 }
-
-PRAGMA_ENABLE_DEPRECATION_WARNINGS
-
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6
-void UFlowGraphSchema::OnPinConnectionDoubleCicked(UEdGraphPin* PinA, UEdGraphPin* PinB, const FVector2f& GraphPosition) const
-{
-	PRAGMA_DISABLE_DEPRECATION_WARNINGS
-		return OnPinConnectionDoubleCicked(PinA, PinB, FVector2D(GraphPosition));
-	PRAGMA_ENABLE_DEPRECATION_WARNINGS
-}
-#endif
 
 bool UFlowGraphSchema::IsCacheVisualizationOutOfDate(int32 InVisualizationCacheID) const
 {

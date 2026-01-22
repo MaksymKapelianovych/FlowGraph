@@ -163,7 +163,7 @@ void UFlowImportUtils::ImportBlueprintGraph(UBlueprint* Blueprint, UFlowAsset* F
 	TMap<FGuid, UFlowGraphNode*> TargetNodes;
 
 	// recreated UFlowNode_Start, assign it a blueprint node FGuid
-	UFlowGraphNode* StartGraphNode = FFlowGraphSchemaAction_NewNode::CreateNode(FlowGraph, nullptr, UFlowNode_Start::StaticClass(), FVector2D::ZeroVector);
+	UFlowGraphNode* StartGraphNode = FFlowGraphSchemaAction_NewNode::CreateNode(FlowGraph, nullptr, UFlowNode_Start::StaticClass(), FVector2f::ZeroVector);
 	FlowGraph->GetSchema()->SetNodeMetaData(StartGraphNode, FNodeMetadata::DefaultGraphNode);
 	StartGraphNode->NodeGuid = StartNode->NodeGuid;
 	StartGraphNode->GetFlowNode()->SetGuid(StartNode->NodeGuid);
@@ -218,7 +218,7 @@ void UFlowImportUtils::ImportBlueprintFunction(const UFlowAsset* FlowAsset, cons
 	const FGuid& NodeGuid = NodeImport.SourceGraphNode->NodeGuid;
 
 	// create a new Flow Graph node
-	const FVector2d Location = FVector2D(NodeImport.SourceGraphNode->NodePosX, NodeImport.SourceGraphNode->NodePosY);
+	const FVector2f Location = FVector2f(NodeImport.SourceGraphNode->NodePosX, NodeImport.SourceGraphNode->NodePosY);
 	UFlowGraphNode* FlowGraphNode = FFlowGraphSchemaAction_NewNode::ImportNode(FlowAsset->GetGraph(), nullptr, MatchingFlowNodeClass, NodeGuid, Location);
 
 	if (FlowGraphNode == nullptr)
