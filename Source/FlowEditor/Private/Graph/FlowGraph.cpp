@@ -56,7 +56,7 @@ void UFlowGraph::RefreshGraph()
 			}
 		}
 
-		bLockUpdates = true;
+		bLockUpdates = false;
 
 		// refresh nodes
 		TArray<UFlowGraphNode*> FlowGraphNodes;
