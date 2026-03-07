@@ -667,6 +667,34 @@ FText UFlowGraphNode::GetTooltipText() const
 	return Tooltip;
 }
 
+//////////////////////////////////////////////////////////////////////////
+// Diff
+
+void UFlowGraphNode::FindDiffs(UEdGraphNode* OtherNode, FDiffResults& Results)
+{
+	Super::FindDiffs(OtherNode, Results);
+
+	UFlowGraphNode* OtherGraphNode = Cast<UFlowGraphNode>(OtherNode);
+	if (!IsValid(OtherGraphNode))
+	{
+		return;
+	}
+
+	if (FlowNode && OtherGraphNode->FlowNode)
+	{
+		FDiffSingleResult Diff;
+		Diff.Diff = EDiffType::NODE_PROPERTY;
+		Diff.Node1 = this;
+		Diff.Node2 = OtherNode;
+		Diff.Object1 = FlowNode;
+		Diff.Object2 = OtherGraphNode->FlowNode;
+		Diff.ToolTip = LOCTEXT("DIF_FlowNodePropertyToolTip", "A property of the node instance has changed");
+		Diff.Category = EDiffType::MODIFICATION;
+
+		DiffProperties(FlowNode->GetClass(), OtherGraphNode->FlowNode->GetClass(), FlowNode, OtherGraphNode->FlowNode, Results, Diff);
+	}
+}
+
 UFlowGraph* UFlowGraphNode::GetFlowGraph() const
 {
 	return CastChecked<UFlowGraph>(GetGraph());

@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "Asset/FlowObjectDiff.h"
 #include "DiffResults.h"
 #include "Editor/Kismet/Private/DiffControl.h"
 
@@ -26,7 +27,7 @@ public:
 /// FFlowGraphToDiff: engine's FGraphToDiff customized to Flow Graph
 struct FLOWEDITOR_API FFlowGraphToDiff : public TSharedFromThis<FFlowGraphToDiff>, IDiffControl
 {
-	FFlowGraphToDiff(class SFlowDiff* DiffWidget, UEdGraph* GraphOld, UEdGraph* GraphNew, const FRevisionInfo& RevisionOld, const FRevisionInfo& RevisionNew);
+	FFlowGraphToDiff(SFlowDiff* DiffWidget, UEdGraph* GraphOld, UEdGraph* GraphNew, const FRevisionInfo& RevisionOld, const FRevisionInfo& RevisionNew);
 	virtual ~FFlowGraphToDiff() override;
 
 	/** Add widgets to the differences tree */
@@ -34,6 +35,9 @@ struct FLOWEDITOR_API FFlowGraphToDiff : public TSharedFromThis<FFlowGraphToDiff
 
 	UEdGraph* GetGraphOld() const { return GraphOld; };
 	UEdGraph* GetGraphNew() const { return GraphNew; };
+
+	ENodeDiffType GetNodeDiffType(const UEdGraphNode& Node) const;
+	TSharedPtr<FFlowObjectDiff> GetFlowObjectDiff(const FDiffResultItem& DiffResultItem);
 
 	/** Source for list view */
 	TArray<TSharedPtr<FDiffResultItem>> DiffListSource;
@@ -51,7 +55,11 @@ private:
 
 	void BuildDiffSourceArray();
 
-	class SFlowDiff* DiffWidget;
+	TSharedPtr<FFlowObjectDiff> GenerateFlowObjectDiff(const TSharedPtr<FDiffResultItem>& Differences);
+
+	TMap<FString, TSharedPtr<FFlowObjectDiff>> FlowObjectDiffsByNodeName;
+
+	SFlowDiff* DiffWidget;
 	UEdGraph* GraphOld;
 	UEdGraph* GraphNew;
 

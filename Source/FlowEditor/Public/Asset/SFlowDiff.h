@@ -5,9 +5,13 @@
 #include "IDetailsView.h"
 #include "DiffResults.h"
 #include "SDetailsDiff.h"
+#include "Widgets/Layout/LinkableScrollBar.h"
 #include "Textures/SlateIcon.h"
 
 struct FFlowGraphToDiff;
+struct FFlowObjectDiffArgs;
+class IDetailsView;
+class SSplitter2x2;
 class UFlowAsset;
 
 enum class EAssetEditorCloseReason : uint8;
@@ -44,6 +48,9 @@ struct FLOWEDITOR_API FFlowDiffPanel
 	void FocusDiff(const UEdGraphPin& Pin) const;
 	void FocusDiff(const UEdGraphNode& Node) const;
 
+	void HighlightAndClearSelectedProperty();
+	void SetPropertyToHighlight(const FPropertyPath& PropertyPath);
+
 	/** The Flow Asset that owns the graph we are showing */
 	const UFlowAsset* FlowAsset;
 
@@ -52,6 +59,8 @@ struct FLOWEDITOR_API FFlowDiffPanel
 
 	/** The details view associated with the graph editor */
 	TSharedPtr<class IDetailsView> DetailsView;
+
+	TSharedPtr<SLinkableScrollBar> DetailScrollbar;
 
 	/** The graph editor which does the work of displaying the graph */
 	TWeakPtr<class SGraphEditor> GraphEditor;
@@ -67,6 +76,8 @@ struct FLOWEDITOR_API FFlowDiffPanel
 private:
 	/** Command list for this diff panel */
 	TSharedPtr<FUICommandList> GraphEditorCommands;
+
+	FPropertyPath PropertyToHighlight;
 };
 
 /* Visual Diff between two Flow Assets */
@@ -90,6 +101,8 @@ public:
 	void Construct(const FArguments& InArgs);
 	virtual ~SFlowDiff() override;
 
+	virtual void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override;
+
 	/** Called when a new Graph is clicked on by user */
 	void OnGraphChanged(const FFlowGraphToDiff* Diff);
 
@@ -97,7 +110,7 @@ public:
 	void OnGraphSelectionChanged(const TSharedPtr<FFlowGraphToDiff> Item, ESelectInfo::Type SelectionType);
 
 	/** Called when user clicks on an entry in the listview of differences */
-	void OnDiffListSelectionChanged(TSharedPtr<struct FDiffResultItem> TheDiff);
+	void OnDiffListSelectionChanged(TSharedPtr<FFlowObjectDiffArgs> FlowObjectDiffArgs);
 
 	/** Helper function for generating an empty widget */
 	static TSharedRef<SWidget> DefaultEmptyPanel();
@@ -181,6 +194,9 @@ protected:
 
 	/*The two panels used to show the old & new revision*/
 	FFlowDiffPanel PanelOld, PanelNew;
+	
+	/* Diff info about the flow details in graph diff view */
+	TSharedPtr<FAsyncDetailViewDiff> GraphDetailDiff;
 
 	/** If the two views should be locked */
 	bool bLockViews;
@@ -214,6 +230,8 @@ protected:
 
 	/** A pointer to the window holding this */
 	TWeakPtr<SWindow> WeakParentWindow;
+
+	TSharedPtr<SSplitter2x2> GraphDiffSplitter = nullptr;
 
 	FDelegateHandle AssetEditorCloseDelegate;
 };
