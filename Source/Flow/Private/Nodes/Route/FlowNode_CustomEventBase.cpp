@@ -13,7 +13,7 @@ UFlowNode_CustomEventBase::UFlowNode_CustomEventBase(const FObjectInitializer& O
 	NodeStyle = EFlowNodeStyle::InOut;
 #endif
 
-	AllowedSignalModes = {EFlowSignalMode::Enabled, EFlowSignalMode::Disabled};
+	AllowedSignalModes = static_cast<uint8>(EFlowSignalMode::Enabled | EFlowSignalMode::Disabled);
 }
 
 void UFlowNode_CustomEventBase::SetEventName(const FName& InEventName)

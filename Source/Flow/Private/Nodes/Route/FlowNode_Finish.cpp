@@ -13,7 +13,7 @@ UFlowNode_Finish::UFlowNode_Finish(const FObjectInitializer& ObjectInitializer)
 #endif
 
 	OutputPins = {};
-	AllowedSignalModes = {EFlowSignalMode::Enabled, EFlowSignalMode::Disabled};
+	AllowedSignalModes = static_cast<uint8>(EFlowSignalMode::Enabled | EFlowSignalMode::Disabled);
 }
 
 void UFlowNode_Finish::ExecuteInput(const FName& PinName)

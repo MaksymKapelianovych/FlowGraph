@@ -24,6 +24,8 @@
 #include "Editor.h"
 #endif
 
+#include "Misc/DataValidation.h"
+
 #include UE_INLINE_GENERATED_CPP_BY_NAME(FlowNode)
 
 FFlowPin UFlowNode::DefaultInputPin(TEXT("In"));
@@ -43,7 +45,7 @@ UFlowNode::UFlowNode(const FObjectInitializer& ObjectInitializer)
 	, bCanDuplicate(true)
 	, bNodeDeprecated(false)
 #endif
-	, AllowedSignalModes({EFlowSignalMode::Enabled, EFlowSignalMode::Disabled, EFlowSignalMode::PassThrough})
+	, AllowedSignalModes(static_cast<uint8>(EFlowSignalMode::Enabled | EFlowSignalMode::Disabled | EFlowSignalMode::PassThrough))
 	, SignalMode(EFlowSignalMode::Enabled)
 	, bPreloaded(false)
 	, ActivationState(EFlowNodeState::NeverActivated)
@@ -86,6 +88,19 @@ void UFlowNode::FixNode(UEdGraphNode* NewGraphNode)
 	{
 		GraphNode = NewGraphNode;
 	}
+}
+
+EDataValidationResult UFlowNode::IsDataValid( class FDataValidationContext& Context ) const
+{
+	EDataValidationResult Result = CombineDataValidationResults(Super::IsDataValid(Context), EDataValidationResult::Valid);
+
+	if (AllowedSignalModes == 0)
+	{
+		Result = EDataValidationResult::Invalid;
+		Context.AddError(NSLOCTEXT("FlowNode", "NoAllowedSignalModes", "There must be at least one signal mode in Allowed Signal Modes!"));
+	}
+	
+	return Result;
 }
 
 void UFlowNode::SetGraphNode(UEdGraphNode* NewGraph)

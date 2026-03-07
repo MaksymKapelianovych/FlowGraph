@@ -88,6 +88,7 @@ public:
 	virtual void FixNode(UEdGraphNode* NewGraphNode);
 
 	virtual EDataValidationResult ValidateNode() { return EDataValidationResult::NotValidated; }
+	virtual EDataValidationResult IsDataValid(class FDataValidationContext& Context) const override;
 
 	// used when import graph from another asset
 	virtual void PostImport() {}
@@ -152,8 +153,8 @@ public:
 	virtual bool CanFinishGraph() const { return false; }
 
 protected:
-	UPROPERTY(EditDefaultsOnly, Category = "FlowNode")
-	TArray<EFlowSignalMode> AllowedSignalModes;
+	UPROPERTY(EditDefaultsOnly, Category = "FlowNode", meta = (Bitmask, BitmaskEnum = "/Script/Flow.EFlowSignalMode"))
+	int8 AllowedSignalModes;
 
 	// If enabled, signal will pass through node without calling ExecuteInput()
 	// Designed to handle patching

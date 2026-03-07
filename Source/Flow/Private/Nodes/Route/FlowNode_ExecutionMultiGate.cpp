@@ -19,7 +19,7 @@ UFlowNode_ExecutionMultiGate::UFlowNode_ExecutionMultiGate(const FObjectInitiali
 
 	InputPins.Add(FFlowPin(TEXT("Reset"), ResetPinTooltip));
 	SetNumberedOutputPins(0, 1);
-	AllowedSignalModes = {EFlowSignalMode::Enabled, EFlowSignalMode::Disabled};
+	AllowedSignalModes = static_cast<uint8>(EFlowSignalMode::Enabled | EFlowSignalMode::Disabled);
 }
 
 void UFlowNode_ExecutionMultiGate::ExecuteInput(const FName& PinName)
