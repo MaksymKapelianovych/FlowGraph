@@ -154,7 +154,7 @@ public:
 
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "FlowNode", meta = (Bitmask, BitmaskEnum = "/Script/Flow.EFlowSignalMode"))
-	int8 AllowedSignalModes;
+	uint8 AllowedSignalModes;
 
 	// If enabled, signal will pass through node without calling ExecuteInput()
 	// Designed to handle patching
