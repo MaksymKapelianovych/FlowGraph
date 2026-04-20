@@ -48,9 +48,6 @@ struct FLOWEDITOR_API FFlowDiffPanel
 	void FocusDiff(const UEdGraphPin& Pin) const;
 	void FocusDiff(const UEdGraphNode& Node) const;
 
-	void HighlightAndClearSelectedProperty();
-	void SetPropertyToHighlight(const FPropertyPath& PropertyPath);
-
 	/** The Flow Asset that owns the graph we are showing */
 	const UFlowAsset* FlowAsset;
 
